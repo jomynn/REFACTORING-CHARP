@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C# Cache Optimization — Method-Level Reference</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700;800&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --ink:#0F0E1A;--bg:#F6F5FD;--surface:#FFF;--border:#E2DFF5;
+  --purple:#4C44B0;--teal:#0C6650;--amber:#A86510;--red:#B0302A;
+  --blue:#1558A0;--green:#1A7A45;--muted:#6B6887;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',system-ui,sans-serif;
+}
+html{font-family:var(--sans);background:var(--bg);color:var(--ink);}
+body{padding-bottom:60px;}
+
+header{background:var(--ink);color:#fff;padding:28px 36px 24px;position:relative;overflow:hidden;}
+header::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(76,68,176,.5) 0%,transparent 60%);}
+.h-eye{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.14em;color:#9B98CC;text-transform:uppercase;margin-bottom:8px;position:relative;}
+header h1{font-size:clamp(20px,4vw,28px);font-weight:800;letter-spacing:-.02em;position:relative;}
+header h1 em{font-style:normal;color:#A09BF0;}
+header p{margin-top:8px;font-size:12.5px;color:#AAA8CC;line-height:1.6;position:relative;max-width:640px;}
+.h-pills{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px;position:relative;}
+.h-pill{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(255,255,255,.1);color:#D4D2F0;border:1px solid rgba(255,255,255,.12);}
+
+.nav-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 36px;display:flex;gap:6px;flex-wrap:wrap;position:sticky;top:0;z-index:10;}
+.nav-btn{padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid var(--border);background:transparent;cursor:pointer;color:var(--muted);text-decoration:none;white-space:nowrap;transition:all .15s;}
+.nav-btn:hover{background:var(--bg);}
+
+.wrap{max-width:1060px;margin:0 auto;padding:24px 20px 0;}
+
+.sec-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:28px 0 12px;display:flex;align-items:center;gap:10px;}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:20px;}
+.card-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:12px;}
+.card-icon{width:38px;height:38px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.card-meta{flex:1;}
+.card-name{font-size:14px;font-weight:800;letter-spacing:-.01em;}
+.card-sub{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5;}
+.card-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;}
+.ctag{font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:10px;font-family:var(--mono);}
+
+.card-body{padding:16px 18px;}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;}
+@media(max-width:680px){.grid2{grid-template-columns:1fr;}}
+
+/* CODE */
+.cb{background:#1A1830;border-radius:9px;overflow:hidden;}
+.cb-label{padding:7px 13px;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;font-family:var(--sans);border-bottom:1px solid rgba(255,255,255,.06);}
+.cb-bad .cb-label{background:rgba(176,48,42,.3);color:#F5A0A0;}
+.cb-good .cb-label{background:rgba(26,122,69,.3);color:#8FDAAA;}
+.cb-info .cb-label{background:rgba(76,68,176,.3);color:#C4C0F5;}
+pre.cp{padding:11px 13px;font-family:var(--mono);font-size:10.5px;line-height:1.7;color:#EEFFFF;white-space:pre;overflow-x:auto;margin:0;}
+.kw{color:#C792EA;}.cn{color:#FFCB6B;}.st{color:#C3E88D;}
+.cm{color:#546E7A;font-style:italic;}.nu{color:#F78C6C;}
+.fn{color:#82AAFF;}.tx{color:#EEFFFF;}
+.hl{background:rgba(255,80,80,.15);display:block;margin:0 -13px;padding:0 13px;}
+.gl{background:rgba(26,180,90,.12);display:block;margin:0 -13px;padding:0 13px;}
+
+/* EXPLAIN */
+.explain{background:var(--bg);border-radius:9px;padding:12px 14px;margin-top:10px;}
+.exp-title{font-size:11.5px;font-weight:700;color:var(--ink);margin-bottom:6px;}
+.exp-list{list-style:none;}
+.exp-list li{font-size:11.5px;color:var(--muted);padding:4px 0;border-bottom:1px solid var(--border);display:flex;gap:7px;align-items:flex-start;line-height:1.5;}
+.exp-list li:last-child{border-bottom:none;}
+.exp-list li::before{content:'→';color:var(--border);flex-shrink:0;margin-top:1px;}
+.exp-list li strong{color:var(--ink);font-weight:600;}
+
+.pbox{border-radius:9px;padding:10px 13px;border-left:3px solid;margin-top:10px;font-size:12px;line-height:1.6;}
+.pbox .pb-lbl{font-size:10px;font-weight:700;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
+
+/* COMPARISON TABLE */
+.cmp-table{width:100%;border-collapse:collapse;font-size:11.5px;}
+.cmp-table th{padding:8px 12px;text-align:left;background:var(--bg);border-bottom:2px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);}
+.cmp-table td{padding:7px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+.cmp-table tr:last-child td{border-bottom:none;}
+.cmp-table tr:hover td{background:var(--bg);}
+.tcode{font-family:var(--mono);font-size:10.5px;color:var(--red);}
+.tfix{font-family:var(--mono);font-size:10.5px;color:var(--green);}
+.badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;font-family:var(--mono);}
+.b-r{background:#FCEDECaa;color:var(--red);}
+.b-g{background:#E4F3EAaa;color:var(--green);}
+.b-a{background:#FBF0E2aa;color:var(--amber);}
+.b-p{background:#EEECFCaa;color:var(--purple);}
+.b-b{background:#E5EEF9aa;color:var(--blue);}
+
+/* RULE STRIP */
+.rule-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:14px;}
+.rule-pill{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;border-left:3px solid;}
+.rule-pill .rp-num{font-family:var(--mono);font-size:10px;font-weight:700;margin-bottom:3px;}
+.rule-pill .rp-name{font-size:12px;font-weight:700;color:var(--ink);}
+.rule-pill .rp-desc{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4;}
+
+footer{margin-top:44px;background:var(--ink);color:#AAA8CC;font-size:11px;text-align:center;padding:14px;}
+footer strong{color:#fff;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="h-eye">C# · Cache Optimization · Method Level · Bad → Good</div>
+  <h1>Cache Optimization<br><em>for C# Methods</em></h1>
+  <p>Every common caching mistake in C# methods — magic keys, no expiry, no locking, no invalidation — with clean before/after examples and the patterns that fix them.</p>
+  <div class="h-pills">
+    <span class="h-pill">Magic Cache Keys</span>
+    <span class="h-pill">No Expiry</span>
+    <span class="h-pill">Cache Stampede</span>
+    <span class="h-pill">Cache-Aside Pattern</span>
+    <span class="h-pill">No Invalidation</span>
+    <span class="h-pill">ICacheService Abstraction</span>
+    <span class="h-pill">Async Cache</span>
+    <span class="h-pill">Generic Cache Helper</span>
+  </div>
+</header>
+
+<div class="nav-bar">
+  <a class="nav-btn" href="#c1" style="color:var(--red);border-color:#F5C0BC;">1 Magic Keys</a>
+  <a class="nav-btn" href="#c2" style="color:var(--amber);border-color:#EFD09A;">2 No Expiry</a>
+  <a class="nav-btn" href="#c3" style="color:var(--purple);border-color:#CCC9F5;">3 Cache Stampede</a>
+  <a class="nav-btn" href="#c4" style="color:var(--teal);border-color:#A8D9CA;">4 Cache-Aside</a>
+  <a class="nav-btn" href="#c5" style="color:var(--blue);border-color:#B5CDEF;">5 No Invalidation</a>
+  <a class="nav-btn" href="#c6" style="color:var(--green);border-color:#A8DABB;">6 ICacheService</a>
+  <a class="nav-btn" href="#c7" style="color:var(--purple);border-color:#CCC9F5;">7 Async Cache</a>
+  <a class="nav-btn" href="#c8" style="color:var(--amber);border-color:#EFD09A;">8 Generic Helper</a>
+</div>
+
+<div class="wrap">
+
+<!-- ══════════════════════════════
+     1. MAGIC CACHE KEYS
+══════════════════════════════ -->
+<div class="sec-title">Common Cache Smells — Bad → Good</div>
+
+<div class="card" id="c1">
+  <div class="card-head">
+    <div class="card-icon" style="background:#FCEDECaa;">🔑</div>
+    <div class="card-meta">
+      <div class="card-name">1. Magic Cache Key Strings</div>
+      <div class="card-sub">Inline string keys scattered across classes — typo = silent cache miss with no error.</div>
+      <div class="card-tags">
+        <span class="ctag b-r">🔴 Critical</span>
+        <span class="ctag b-r">DRY violation</span>
+        <span class="ctag b-r">Silent bug</span>
+      </div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="grid2">
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — inline string keys</div>
+<pre class="cp"><span class="kw">public class</span> <span class="cn">ProductService</span>
+<span class="tx">{</span>
+  <span class="kw">public</span> <span class="cn">Product</span><span class="tx">?</span> <span class="fn">GetProduct</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">id)</span>
+  <span class="tx">{</span>
+    <span class="cm">// ⚠ magic string — typo = silent miss</span>
+<span class="hl">    <span class="kw">var</span> <span class="tx">key = </span><span class="st">"product_"</span> <span class="tx">+ id;</span></span>
+    <span class="kw">if</span> <span class="tx">(_cache.</span><span class="fn">TryGetValue</span><span class="tx">(key, </span><span class="kw">out</span> <span class="cn">Product</span><span class="tx">? p))</span>
+      <span class="kw">return</span> <span class="tx">p;</span>
+    <span class="tx">p = _repo.</span><span class="fn">Get</span><span class="tx">(id);</span>
+    <span class="tx">_cache.</span><span class="fn">Set</span><span class="tx">(key, p);</span>
+    <span class="kw">return</span> <span class="tx">p;</span>
+  <span class="tx">}</span>
+
+  <span class="kw">public void</span> <span class="fn">UpdateProduct</span><span class="tx">(</span><span class="cn">Product</span> <span class="tx">p)</span>
+  <span class="tx">{</span>
+    <span class="tx">_repo.</span><span class="fn">Update</span><span class="tx">(p);</span>
+    <span class="cm">// ⚠ different format — cache never busted!</span>
+<span class="hl">    <span class="tx">_cache.</span><span class="fn">Remove</span><span class="tx">(</span><span class="st">"products_"</span> <span class="tx">+ p.Id);</span></span>
+  <span class="tx">}</span>
+<span class="tx">}</span></pre>
+      </div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — typed key factory</div>
+<pre class="cp"><span class="cm">// single source of truth for all cache keys</span>
+<span class="gl"><span class="kw">public static class</span> <span class="cn">CacheKeys</span></span>
+<span class="gl"><span class="tx">{</span></span>
+<span class="gl">  <span class="kw">public static string</span> <span class="fn">Product</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">id)</span></span>
+<span class="gl">    <span class="tx">=&gt; </span><span class="st">$"products:v1:{id}"</span><span class="tx">;</span></span>
+
+<span class="gl">  <span class="kw">public static string</span> <span class="fn">ProductList</span><span class="tx">()</span></span>
+<span class="gl">    <span class="tx">=&gt; </span><span class="st">"products:v1:all"</span><span class="tx">;</span></span>
+
+<span class="gl">  <span class="kw">public static string</span> <span class="fn">UserProfile</span><span class="tx">(</span><span class="cn">Guid</span> <span class="tx">userId)</span></span>
+<span class="gl">    <span class="tx">=&gt; </span><span class="st">$"users:v1:{userId}"</span><span class="tx">;</span></span>
+<span class="gl"><span class="tx">}</span></span>
+
+<span class="kw">public class</span> <span class="cn">ProductService</span>
+<span class="tx">{</span>
+  <span class="kw">public</span> <span class="cn">Product</span><span class="tx">?</span> <span class="fn">GetProduct</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">id)</span>
+  <span class="tx">{</span>
+    <span class="cm">// ✓ typed method — compile-time safe</span>
+<span class="gl">    <span class="kw">var</span> <span class="tx">key = </span><span class="cn">CacheKeys</span><span class="tx">.</span><span class="fn">Product</span><span class="tx">(id);</span></span>
+    <span class="kw">if</span> <span class="tx">(_cache.</span><span class="fn">TryGetValue</span><span class="tx">(key, </span><span class="kw">out</span> <span class="cn">Product</span><span class="tx">? p))</span>
+      <span class="kw">return</span> <span class="tx">p;</span>
+    <span class="tx">p = _repo.</span><span class="fn">Get</span><span class="tx">(id);</span>
+    <span class="tx">_cache.</span><span class="fn">Set</span><span class="tx">(key, p);</span>
+    <span class="kw">return</span> <span class="tx">p;</span>
+  <span class="tx">}</span>
+
+  <span class="kw">public void</span> <span class="fn">UpdateProduct</span><span class="tx">(</span><span class="cn">Product</span> <span class="tx">p)</span>
+  <span class="tx">{</span>
+    <span class="tx">_repo.</span><span class="fn">Update</span><span class="tx">(p);</span>
+    <span class="cm">// ✓ same method = guaranteed match</span>
+<span class="gl">    <span class="tx">_cache.</span><span class="fn">Remove</span><span class="tx">(</span><span class="cn">CacheKeys</span><span class="tx">.</span><span class="fn">Product</span><span class="tx">(p.Id));</span></span>
+  <span class="tx">}</span>
+<span class="tx">}</span></pre>
+      </div>
+    </div>
+    <div class="explain">
+      <div class="exp-title">🔍 How to find this smell</div>
+      <ul class="exp-list">
+        <li>Search: <strong><code>"product_" + id</code></strong> or <strong><code>$"cache_{variable}"</code></strong> inline in methods</li>
+        <li>Same entity cached with <strong>different key format</strong> in set vs remove</li>
+        <li>Key string duplicated in <strong>multiple classes</strong></li>
+      </ul>
+    </div>
+    <div class="pbox" style="background:#EEECFCaa;border-color:var(--purple);">
+      <div class="pb-lbl" style="color:var(--purple);">Key naming convention</div>
+      Format: <code>entity:version:id</code> — e.g. <code>"products:v1:42"</code>. Include a <strong>version</strong> so you can bust all entries by bumping v1 → v2. Never use raw concatenation — always use a static factory method.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     2. NO EXPIRY
+══════════════════════════════ -->
+<div class="card" id="c2">
+  <div class="card-head">
+    <div class="card-icon" style="background:#FBF0E0aa;">⏰</div>
+    <div class="card-meta">
+      <div class="card-name">2. Missing or Wrong Expiry</div>
+      <div class="card-sub">No TTL = stale data forever. Magic number TTL = impossible to tune without redeploying.</div>
+      <div class="card-tags">
+        <span class="ctag b-a">🟡 High</span>
+        <span class="ctag b-r">Stale data</span>
+        <span class="ctag b-r">Memory leak</span>
+      </div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="grid2">
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — no expiry / magic number</div>
+<pre class="cp"><span class="kw">public</span> <span class="cn">Product</span><span class="tx">?</span> <span class="fn">GetProduct</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">id)</span>
+<span class="tx">{</span>
+  <span class="kw">var</span> <span class="tx">key = </span><span class="st">$"product:{id}"</span><span class="tx">;</span>
+  <span class="kw">if</span> <span class="tx">(_cache.</span><span class="fn">TryGetValue</span><span class="tx">(key, </span><span class="kw">out</span> <span class="cn">Product</span><span class="tx">? p))</span>
+    <span class="kw">return</span> <span class="tx">p;</span>
+
+  <span class="tx">p = _repo.</span><span class="fn">Get</span><span class="tx">(id);</span>
+
+  <span class="cm">// ⚠ no expiry — lives forever in memory</span>
+<span class="hl">  <span class="tx">_cache.</span><span class="fn">Set</span><span class="tx">(key, p);</span></span>
+
+  <span class="cm">// OR: ⚠ magic number — what is 300?</span>
+<span class="hl">  <span class="tx">_cache.</span><span class="fn">Set</span><span class="tx">(key, p,</span></span>
+<span class="hl">    <span class="cn">TimeSpan</span><span class="tx">.</span><span class="fn">FromSeconds</span><span class="tx">(</span><span class="nu">300</span><span class="tx">));</span></span>
+
+  <span class="kw">return</span> <span class="tx">p;</span>
+<span class="tx">}</span></pre>
+      </div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — named expiry from config</div>
+<pre class="cp"><span class="cm">// expiry constants — business-driven names</span>
+<span class="gl"><span class="kw">public static class</span> <span class="cn">CacheExpiry</span></span>
+<span class="gl"><span class="tx">{</span></span>
+<span class="gl">  <span class="cm">// how long a product is "fresh"</span></span>
+<span class="gl">  <span class="kw">public static readonly</span> <span class="cn">TimeSpan</span> <span class="tx">Product</span></span>
+<span class="gl">    <span class="tx">= </span><span class="cn">TimeSpan</span><span class="tx">.</span><span class="fn">FromMinutes</span><span class="tx">(</span><span class="nu">5</span><span class="tx">);</span></span>
+
+<span class="gl">  <span class="cm">// user sessions — shorter</span></span>
+<span class="gl">  <span class="kw">public static readonly</span> <span class="cn">TimeSpan</span> <span class="tx">UserSession</span></span>
+<span class="gl">    <span class="tx">= </span><span class="cn">TimeSpan</span><span class="tx">.</span><span class="fn">FromMinutes</span><span class="tx">(</span><span class="nu">15</span><span class="tx">);</span></span>
+
+<span class="gl">  <span class="cm">// reference data — rarely changes</span></span>
+<span class="gl">  <span class="kw">public static readonly</span> <span class="cn">TimeSpan</span> <span class="tx">ReferenceData</span></span>
+<span class="gl">    <span class="tx">= </span><span class="cn">TimeSpan</span><span class="tx">.</span><span class="fn">FromHours</span><span class="tx">(</span><span class="nu">1</span><span class="tx">);</span></span>
+<span class="gl"><span class="tx">}</span></span>
+
+<span class="kw">public</span> <span class="cn">Product</span><span class="tx">?</span> <span class="fn">GetProduct</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">id)</span>
+<span class="tx">{</span>
+  <span class="kw">var</span> <span class="tx">key = </span><span class="cn">CacheKeys</span><span class="tx">.</span><span class="fn">Product</span><span class="tx">(id);</span>
+  <span class="kw">if</span> <span class="tx">(_cache.</span><span class="fn">TryGetValue</span><span class="tx">(key, </span><span class="kw">out</span> <span class="cn">Product</span><span class="tx">? p))</span>
+    <span class="kw">return</span> <span class="tx">p;</span>
+
+  <span class="tx">p = _repo.</span><span class="fn">Get</span><span class="tx">(id);</span>
+
+  <span class="cm">// ✓ named expiry — self-documenting</span>
+<span class="gl">  <span class="tx">_cache.</span><span class="fn">Set</span><span class="tx">(key, p,</span></span>
+<span class="gl">    <span class="kw">new</span> <span class="cn">MemoryCacheEntryOptions</span></span>
+<span class="gl">    <span class="tx">{</span></span>
+<span class="gl">      <span class="tx">AbsoluteExpirationRelativeToNow</span></span>
+<span class="gl">        <span class="tx">= </span><span class="cn">CacheExpiry</span><span class="tx">.Product,</span></span>
+<span class="gl">      <span class="cm">// evict under memory pressure</span></span>
+<span class="gl">      <span class="tx">Priority = </span><span class="cn">CacheItemPriority</span><span class="tx">.Normal</span></span>
+<span class="gl">    <span class="tx">});</span></span>
+  <span class="kw">return</span> <span class="tx">p;</span>
+<span class="tx">}</span></pre>
+      </div>
+    </div>
+    <div class="explain">
+      <div class="exp-title">🔍 Expiry types — when to use each</div>
+      <ul class="exp-list">
+        <li><strong>AbsoluteExpiration</strong> — fixed point in time. Use for: tokens, scheduled data</li>
+        <li><strong>AbsoluteExpirationRelativeToNow</strong> — TTL from now. Use for: most product/user data</li>
+        <li><strong>SlidingExpiration</strong> — resets on access. Use for: sessions, user preferences. <em>Never alone — pair with absolute to prevent infinite extension</em></li>
+      </ul>
+    </div>
+    <div class="pbox" style="background:#FBF0E2aa;border-color:var(--amber);">
+      <div class="pb-lbl" style="color:var(--amber);">Best practice for sliding</div>
+      Always combine: <code>SlidingExpiration = 2min</code> + <code>AbsoluteExpirationRelativeToNow = 10min</code>. Sliding alone lets an active user cache live forever.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     3. CACHE STAMPEDE
+══════════════════════════════ -->
+<div class="card" id="c3">
+  <div class="card-head">
+    <div class="card-icon" style="background:#EEECFCaa;">⚡</div>
+    <div class="card-meta">
+      <div class="card-name">3. Cache Stampede (Dog-piling)</div>
+      <div class="card-sub">Cache expires → 50 concurrent requests all miss → all hit DB simultaneously → DB collapses.</div>
+      <div class="card-tags">
+        <span class="ctag b-r">🔴 Critical</span>
+        <span class="ctag b-r">Race condition</span>
+        <span class="ctag b-r">DB overload</span>
+      </div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="grid2">
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — no lock, all threads hit DB</div>
+<pre class="cp"><span class="kw">public async</span> <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">Product</span><span class="tx">?&gt;</span>
+  <span class="fn">GetProductAsync</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">id)</span>
+<span class="tx">{</span>
+  <span class="kw">var</span> <span class="tx">key = </span><span class="cn">CacheKeys</span><span class="tx">.</span><span class="fn">Product</span><span class="tx">(id);</span>
+
+  <span class="cm">// ⚠ no locking — all 50 threads</span>
+  <span class="cm">// miss simultaneously on expiry</span>
+<span class="hl">  <span class="kw">if</span> <span class="tx">(_cache.</span><span class="fn">TryGetValue</span><span class="tx">(key,</span></span>
+<span class="hl">    <span class="kw">out</span> <span class="cn">Product</span><span class="tx">? cached)) </span><span class="kw">return</span> <span class="tx">cached;</span></span>
+
+<span class="hl">  <span class="cm">// all 50 hit DB at once</span></span>
+<span class="hl">  <span class="kw">var</span> <span class="tx">product = </span><span class="kw">await</span> <span class="tx">_repo.</span><span class="fn">GetAsync</span><span class="tx">(id);</span></span>
+  <span class="tx">_cache.</span><span class="fn">Set</span><span class="tx">(key, product,</span>
+    <span class="cn">CacheExpiry</span><span class="tx">.Product);</span>
+  <span class="kw">return</span> <span class="tx">product;</span>
+<span class="tx">}</span></pre>
+      </div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — SemaphoreSlim per key</div>
+<pre class="cp"><span class="cm">// one semaphore per cache key</span>
+<span class="kw">private readonly</span> <span class="cn">ConcurrentDictionary</span><span class="tx">&lt;</span><span class="cn">string</span><span class="tx">,</span>
+  <span class="cn">SemaphoreSlim</span><span class="tx">&gt; _locks = </span><span class="kw">new</span><span class="tx">();</span>
+
+<span class="kw">public async</span> <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">Product</span><span class="tx">?&gt;</span>
+  <span class="fn">GetProductAsync</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">id)</span>
+<span class="tx">{</span>
+  <span class="kw">var</span> <span class="tx">key = </span><span class="cn">CacheKeys</span><span class="tx">.</span><span class="fn">Product</span><span class="tx">(id);</span>
+
+  <span class="cm">// fast path — no lock needed</span>
+<span class="gl">  <span class="kw">if</span> <span class="tx">(_cache.</span><span class="fn">TryGetValue</span><span class="tx">(key,</span></span>
+<span class="gl">    <span class="kw">out</span> <span class="cn">Product</span><span class="tx">? cached)) </span><span class="kw">return</span> <span class="tx">cached;</span></span>
+
+  <span class="cm">// slow path — only ONE thread loads</span>
+<span class="gl">  <span class="kw">var</span> <span class="tx">sem = _locks.</span><span class="fn">GetOrAdd</span><span class="tx">(key,</span></span>
+<span class="gl">    <span class="tx">_ =&gt; </span><span class="kw">new</span> <span class="cn">SemaphoreSlim</span><span class="tx">(</span><span class="nu">1</span><span class="tx">, </span><span class="nu">1</span><span class="tx">));</span></span>
+<span class="gl">  <span class="kw">await</span> <span class="tx">sem.</span><span class="fn">WaitAsync</span><span class="tx">();</span></span>
+  <span class="kw">try</span>
+  <span class="tx">{</span>
+    <span class="cm">// double-check after acquiring lock</span>
+<span class="gl">    <span class="kw">if</span> <span class="tx">(_cache.</span><span class="fn">TryGetValue</span><span class="tx">(key,</span></span>
+<span class="gl">      <span class="kw">out</span> <span class="tx">cached)) </span><span class="kw">return</span> <span class="tx">cached;</span></span>
+
+<span class="gl">    <span class="kw">var</span> <span class="tx">product =</span></span>
+<span class="gl">      <span class="kw">await</span> <span class="tx">_repo.</span><span class="fn">GetAsync</span><span class="tx">(id);</span>  <span class="cm">// 1 DB call</span></span>
+<span class="gl">    <span class="tx">_cache.</span><span class="fn">Set</span><span class="tx">(key, product,</span></span>
+<span class="gl">      <span class="cn">CacheExpiry</span><span class="tx">.Product);</span></span>
+<span class="gl">    <span class="kw">return</span> <span class="tx">product;</span></span>
+  <span class="tx">}</span>
+  <span class="kw">finally</span> <span class="tx">{ sem.</span><span class="fn">Release</span><span class="tx">(); }</span>
+<span class="tx">}</span></pre>
+      </div>
+    </div>
+    <div class="explain">
+      <div class="exp-title">🔍 The double-check pattern explained</div>
+      <ul class="exp-list">
+        <li><strong>Fast path</strong> — check cache first with no lock (99% of requests return here)</li>
+        <li><strong>Acquire semaphore</strong> — only one thread proceeds to DB at a time</li>
+        <li><strong>Double-check</strong> — the thread that waited may now find the cache populated by the thread ahead</li>
+        <li><strong>Load + set</strong> — exactly one DB call per cache miss, all others wait then read from cache</li>
+      </ul>
+    </div>
+    <div class="pbox" style="background:#EEECFCaa;border-color:var(--purple);">
+      <div class="pb-lbl" style="color:var(--purple);">Alternative: GetOrCreate</div>
+      <code>IMemoryCache.GetOrCreateAsync(key, entry => { entry.AbsoluteExpirationRelativeToNow = CacheExpiry.Product; return _repo.GetAsync(id); })</code> — handles the lock internally for simple cases. Use SemaphoreSlim for fine-grained control.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     4. CACHE-ASIDE PATTERN
+══════════════════════════════ -->
+<div class="card" id="c4">
+  <div class="card-head">
+    <div class="card-icon" style="background:#E0F3EEaa;">🗄</div>
+    <div class="card-meta">
+      <div class="card-name">4. Cache-Aside Pattern (Lazy Loading)</div>
+      <div class="card-sub">The correct standard pattern — check cache, miss → load from source → populate cache → return.</div>
+      <div class="card-tags">
+        <span class="ctag b-g">✓ Best Practice</span>
+        <span class="ctag b-g">Standard pattern</span>
+      </div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="grid2">
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — mixing cache + business logic</div>
+<pre class="cp"><span class="kw">public async</span> <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">decimal</span><span class="tx">&gt;</span>
+  <span class="fn">GetPriceAsync</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">productId)</span>
+<span class="tx">{</span>
+  <span class="cm">// ⚠ cache logic tangled with business logic</span>
+<span class="hl">  <span class="kw">string</span> <span class="tx">key = </span><span class="st">"price_"</span> <span class="tx">+ productId;</span></span>
+<span class="hl">  <span class="kw">if</span> <span class="tx">(_cache.</span><span class="fn">TryGetValue</span><span class="tx">(key,</span></span>
+<span class="hl">    <span class="kw">out decimal</span> <span class="tx">cached)) </span><span class="kw">return</span> <span class="tx">cached;</span></span>
+
+  <span class="cm">// business logic buried after cache logic</span>
+  <span class="kw">var</span> <span class="tx">product = </span><span class="kw">await</span> <span class="tx">_repo.</span><span class="fn">GetAsync</span><span class="tx">(productId);</span>
+  <span class="kw">var</span> <span class="tx">price = product.BasePrice</span>
+    <span class="tx">* (</span><span class="nu">1</span> <span class="tx">- product.Discount);</span>
+
+<span class="hl">  <span class="tx">_cache.</span><span class="fn">Set</span><span class="tx">(key, price,</span></span>
+<span class="hl">    <span class="cn">TimeSpan</span><span class="tx">.</span><span class="fn">FromSeconds</span><span class="tx">(</span><span class="nu">300</span><span class="tx">));</span></span>
+  <span class="kw">return</span> <span class="tx">price;</span>
+<span class="tx">}</span></pre>
+      </div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — clean cache-aside</div>
+<pre class="cp"><span class="cm">// cache-aside using GetOrCreateAsync</span>
+<span class="kw">public async</span> <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">decimal</span><span class="tx">&gt;</span>
+  <span class="fn">GetPriceAsync</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">productId)</span>
+<span class="tx">{</span>
+<span class="gl">  <span class="kw">return await</span> _cache.</span>
+<span class="gl">    <span class="fn">GetOrCreateAsync</span><span class="tx">(</span></span>
+<span class="gl">      <span class="cn">CacheKeys</span><span class="tx">.</span><span class="fn">Product</span><span class="tx">(productId),</span></span>
+<span class="gl">      <span class="kw">async</span> <span class="tx">entry =&gt;</span></span>
+<span class="gl">      <span class="tx">{</span></span>
+<span class="gl">        <span class="cm">// cache config — expiry + priority</span></span>
+<span class="gl">        <span class="tx">entry.AbsoluteExpirationRelativeToNow</span></span>
+<span class="gl">          <span class="tx">= </span><span class="cn">CacheExpiry</span><span class="tx">.Product;</span></span>
+<span class="gl">        <span class="tx">entry.Priority</span></span>
+<span class="gl">          <span class="tx">= </span><span class="cn">CacheItemPriority</span><span class="tx">.High;</span></span>
+
+<span class="gl">        <span class="cm">// business logic — clear and separated</span></span>
+<span class="gl">        <span class="kw">var</span> <span class="tx">product =</span></span>
+<span class="gl">          <span class="kw">await</span> <span class="tx">_repo.</span><span class="fn">GetAsync</span><span class="tx">(productId);</span></span>
+<span class="gl">        <span class="kw">return</span> <span class="tx">product.BasePrice</span></span>
+<span class="gl">          <span class="tx">* (</span><span class="nu">1</span> <span class="tx">- product.Discount);</span></span>
+<span class="gl">      <span class="tx">})!;</span></span>
+<span class="tx">}</span></pre>
+      </div>
+    </div>
+    <div class="explain">
+      <div class="exp-title">🔍 Cache-Aside flow</div>
+      <ul class="exp-list">
+        <li><strong>Check</strong> — look in cache. Hit → return immediately</li>
+        <li><strong>Miss</strong> — call <code>GetOrCreateAsync</code> factory lambda</li>
+        <li><strong>Load</strong> — fetch from DB/API inside the factory</li>
+        <li><strong>Populate</strong> — result automatically stored with your expiry settings</li>
+        <li><strong>Return</strong> — caller gets data regardless of cache hit or miss</li>
+      </ul>
+    </div>
+    <div class="pbox" style="background:#E3F4EFaa;border-color:var(--teal);">
+      <div class="pb-lbl" style="color:var(--teal);">Why GetOrCreateAsync beats manual TryGetValue</div>
+      It handles the check-load-set pattern in one call. The factory is only invoked on a cache miss. Thread-safety is handled internally for simple cases. Use SemaphoreSlim only when you need per-key control.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     5. NO INVALIDATION
+══════════════════════════════ -->
+<div class="card" id="c5">
+  <div class="card-head">
+    <div class="card-icon" style="background:#E5EEF9aa;">🗑</div>
+    <div class="card-meta">
+      <div class="card-name">5. Missing Cache Invalidation</div>
+      <div class="card-sub">Data updated in DB but cache serves stale version. Users see old prices, old stock levels, old profiles.</div>
+      <div class="card-tags">
+        <span class="ctag b-r">🔴 Critical</span>
+        <span class="ctag b-r">Stale data served</span>
+        <span class="ctag b-b">Write-Through fix</span>
+      </div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="grid2">
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — update without cache bust</div>
+<pre class="cp"><span class="kw">public async</span> <span class="cn">Task</span>
+  <span class="fn">UpdateProductAsync</span><span class="tx">(</span><span class="cn">Product</span> <span class="tx">product)</span>
+<span class="tx">{</span>
+  <span class="cm">// saves to DB</span>
+  <span class="kw">await</span> <span class="tx">_repo.</span><span class="fn">UpdateAsync</span><span class="tx">(product);</span>
+
+  <span class="cm">// ⚠ cache never invalidated</span>
+  <span class="cm">// reads still return old data</span>
+<span class="hl">  <span class="cm">// _cache.Remove(...) MISSING!</span></span>
+<span class="tx">}</span>
+
+<span class="kw">public async</span> <span class="cn">Task</span>
+  <span class="fn">DeleteProductAsync</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">id)</span>
+<span class="tx">{</span>
+  <span class="kw">await</span> <span class="tx">_repo.</span><span class="fn">DeleteAsync</span><span class="tx">(id);</span>
+<span class="hl">  <span class="cm">// ⚠ deleted item still in cache!</span></span>
+<span class="tx">}</span></pre>
+      </div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — invalidate on every write</div>
+<pre class="cp"><span class="kw">public async</span> <span class="cn">Task</span>
+  <span class="fn">UpdateProductAsync</span><span class="tx">(</span><span class="cn">Product</span> <span class="tx">product)</span>
+<span class="tx">{</span>
+  <span class="kw">await</span> <span class="tx">_repo.</span><span class="fn">UpdateAsync</span><span class="tx">(product);</span>
+
+  <span class="cm">// ✓ bust single entry</span>
+<span class="gl">  <span class="tx">_cache.</span><span class="fn">Remove</span><span class="tx">(</span></span>
+<span class="gl">    <span class="cn">CacheKeys</span><span class="tx">.</span><span class="fn">Product</span><span class="tx">(product.Id));</span></span>
+
+  <span class="cm">// ✓ also bust the list (it changed)</span>
+<span class="gl">  <span class="tx">_cache.</span><span class="fn">Remove</span><span class="tx">(</span></span>
+<span class="gl">    <span class="cn">CacheKeys</span><span class="tx">.</span><span class="fn">ProductList</span><span class="tx">());</span></span>
+<span class="tx">}</span>
+
+<span class="kw">public async</span> <span class="cn">Task</span>
+  <span class="fn">DeleteProductAsync</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">id)</span>
+<span class="tx">{</span>
+  <span class="kw">await</span> <span class="tx">_repo.</span><span class="fn">DeleteAsync</span><span class="tx">(id);</span>
+<span class="gl">  <span class="tx">_cache.</span><span class="fn">Remove</span><span class="tx">(</span><span class="cn">CacheKeys</span><span class="tx">.</span><span class="fn">Product</span><span class="tx">(id));</span></span>
+<span class="gl">  <span class="tx">_cache.</span><span class="fn">Remove</span><span class="tx">(</span><span class="cn">CacheKeys</span><span class="tx">.</span><span class="fn">ProductList</span><span class="tx">());</span></span>
+<span class="tx">}</span>
+
+<span class="cm">// ✓ Advanced: tag-based invalidation</span>
+<span class="cm">// group related entries under a tag</span>
+<span class="cm">// bust the whole group with one call</span>
+<span class="kw">var</span> <span class="tx">options = </span><span class="kw">new</span> <span class="cn">MemoryCacheEntryOptions</span><span class="tx">();</span>
+<span class="kw">var</span> <span class="tx">tag = </span><span class="kw">new</span> <span class="cn">CancellationTokenSource</span><span class="tx">();</span>
+<span class="tx">options.</span><span class="fn">AddExpirationToken</span><span class="tx">(</span>
+  <span class="kw">new</span> <span class="cn">CancellationChangeToken</span><span class="tx">(tag.Token));</span>
+<span class="cm">// later: tag.Cancel() busts ALL tagged entries</span></pre>
+      </div>
+    </div>
+    <div class="explain">
+      <div class="exp-title">🔍 Invalidation strategy by data type</div>
+      <ul class="exp-list">
+        <li><strong>Single entity updated</strong> → Remove(CacheKeys.Product(id))</li>
+        <li><strong>List/collection changed</strong> → also Remove(CacheKeys.ProductList())</li>
+        <li><strong>Bulk update</strong> → CancellationTokenSource tag bust</li>
+        <li><strong>Time-sensitive data</strong> → short TTL + no manual invalidation</li>
+      </ul>
+    </div>
+    <div class="pbox" style="background:#E5EEF9aa;border-color:var(--blue);">
+      <div class="pb-lbl" style="color:var(--blue);">Rule: every write method must have a matching cache bust</div>
+      Create → bust list cache. Update → bust entity + list. Delete → bust entity + list. If you add a write method without a bust, you will serve stale data.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     6. ICacheService ABSTRACTION
+══════════════════════════════ -->
+<div class="card" id="c6">
+  <div class="card-head">
+    <div class="card-icon" style="background:#E4F3EAaa;">🧩</div>
+    <div class="card-meta">
+      <div class="card-name">6. Direct IMemoryCache — No Abstraction</div>
+      <div class="card-sub">IMemoryCache scattered across 10 classes — impossible to swap to Redis, impossible to mock in tests.</div>
+      <div class="card-tags">
+        <span class="ctag b-r">🔴 Critical</span>
+        <span class="ctag b-p">DIP violation</span>
+        <span class="ctag b-g">ICacheService fix</span>
+      </div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="grid2">
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — IMemoryCache injected everywhere</div>
+<pre class="cp"><span class="cm">// ⚠ IMemoryCache in every service</span>
+<span class="kw">public class</span> <span class="cn">ProductService</span>
+<span class="tx">{</span>
+<span class="hl">  <span class="kw">private readonly</span> <span class="cn">IMemoryCache</span> <span class="tx">_cache;</span></span>
+<span class="hl">  <span class="kw">public</span> <span class="cn">ProductService</span><span class="tx">(</span><span class="cn">IMemoryCache</span> <span class="tx">c)</span></span>
+<span class="hl">    <span class="tx">=&gt; _cache = c;</span></span>
+<span class="tx">}</span>
+
+<span class="kw">public class</span> <span class="cn">UserService</span>
+<span class="tx">{</span>
+<span class="hl">  <span class="kw">private readonly</span> <span class="cn">IMemoryCache</span> <span class="tx">_cache;</span></span>
+  <span class="cm">// switch to Redis = edit EVERY class</span>
+<span class="tx">}</span>
+
+<span class="cm">// test: cannot mock IMemoryCache cleanly</span>
+<span class="cm">// swap Redis: change 10+ classes</span></pre>
+      </div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — ICacheService abstraction</div>
+<pre class="cp"><span class="cm">// single abstraction in domain</span>
+<span class="gl"><span class="kw">public interface</span> <span class="cn">ICacheService</span></span>
+<span class="gl"><span class="tx">{</span></span>
+<span class="gl">  <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">T</span><span class="tx">?&gt; </span><span class="fn">GetAsync</span><span class="tx">&lt;</span><span class="cn">T</span><span class="tx">&gt;(</span><span class="cn">string</span> <span class="tx">key);</span></span>
+<span class="gl">  <span class="cn">Task</span>      <span class="fn">SetAsync</span><span class="tx">&lt;</span><span class="cn">T</span><span class="tx">&gt;(</span><span class="cn">string</span> <span class="tx">key, </span><span class="cn">T</span> <span class="tx">val,</span></span>
+<span class="gl">               <span class="cn">TimeSpan</span><span class="tx">? expiry = </span><span class="kw">null</span><span class="tx">);</span></span>
+<span class="gl">  <span class="cn">Task</span>      <span class="fn">RemoveAsync</span><span class="tx">(</span><span class="cn">string</span> <span class="tx">key);</span></span>
+<span class="gl"><span class="tx">}</span></span>
+
+<span class="cm">// memory implementation</span>
+<span class="gl"><span class="kw">public class</span> <span class="cn">MemoryCacheService</span></span>
+<span class="gl">  <span class="tx">:</span> <span class="cn">ICacheService</span></span>
+<span class="gl"><span class="tx">{</span></span>
+<span class="gl">  <span class="kw">private static readonly</span> <span class="cn">TimeSpan</span> <span class="tx">Default</span></span>
+<span class="gl">    <span class="tx">= </span><span class="cn">TimeSpan</span><span class="tx">.</span><span class="fn">FromMinutes</span><span class="tx">(</span><span class="nu">5</span><span class="tx">);</span></span>
+<span class="gl">  <span class="kw">private readonly</span> <span class="cn">IMemoryCache</span> <span class="tx">_cache;</span></span>
+
+<span class="gl">  <span class="kw">public</span> <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">T</span><span class="tx">?&gt; </span><span class="fn">GetAsync</span><span class="tx">&lt;</span><span class="cn">T</span><span class="tx">&gt;(</span><span class="cn">string</span> <span class="tx">key)</span>
+<span class="tx">  {</span>
+    <span class="tx">_cache.</span><span class="fn">TryGetValue</span><span class="tx">(key, </span><span class="kw">out</span> <span class="cn">T</span><span class="tx">? v);</span>
+    <span class="kw">return</span> <span class="cn">Task</span><span class="tx">.</span><span class="fn">FromResult</span><span class="tx">(v);</span>
+  <span class="tx">}</span></span>
+<span class="gl">  <span class="kw">public</span> <span class="cn">Task</span> <span class="fn">SetAsync</span><span class="tx">&lt;</span><span class="cn">T</span><span class="tx">&gt;(</span><span class="cn">string</span> <span class="tx">k, </span><span class="cn">T</span> <span class="tx">v,</span></span>
+<span class="gl">    <span class="cn">TimeSpan</span><span class="tx">? expiry)</span>
+<span class="tx">  { _cache.</span><span class="fn">Set</span><span class="tx">(k, v, expiry ?? Default);</span>
+    <span class="kw">return</span> <span class="cn">Task</span><span class="tx">.CompletedTask; }</span></span>
+<span class="gl">  <span class="kw">public</span> <span class="cn">Task</span> <span class="fn">RemoveAsync</span><span class="tx">(</span><span class="cn">string</span> <span class="tx">k)</span>
+<span class="tx">  { _cache.</span><span class="fn">Remove</span><span class="tx">(k);</span>
+    <span class="kw">return</span> <span class="cn">Task</span><span class="tx">.CompletedTask; }</span></span>
+<span class="gl"><span class="tx">}</span></span>
+<span class="cm">// swap to Redis: class RedisCacheService : ICacheService</span>
+<span class="cm">// test: new Mock&lt;ICacheService&gt;() — trivial</span></pre>
+      </div>
+    </div>
+    <div class="pbox" style="background:#E4F3EAaa;border-color:var(--green);">
+      <div class="pb-lbl" style="color:var(--green);">DI registration</div>
+      <code>builder.Services.AddMemoryCache();</code><br>
+      <code>builder.Services.AddScoped&lt;ICacheService, MemoryCacheService&gt;();</code><br>
+      Swap to Redis: replace second line with <code>RedisCacheService</code> — zero other changes.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     7. ASYNC CACHE PATTERN
+══════════════════════════════ -->
+<div class="card" id="c7">
+  <div class="card-head">
+    <div class="card-icon" style="background:#EEECFCaa;">⚡</div>
+    <div class="card-meta">
+      <div class="card-name">7. Blocking Async in Cache Methods</div>
+      <div class="card-sub">.Result / .Wait() inside cache methods cause deadlocks in ASP.NET Core.</div>
+      <div class="card-tags">
+        <span class="ctag b-r">🔴 Critical</span>
+        <span class="ctag b-r">Deadlock risk</span>
+        <span class="ctag b-r">Thread starvation</span>
+      </div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="grid2">
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — sync blocking async cache</div>
+<pre class="cp"><span class="kw">public</span> <span class="cn">Product</span><span class="tx">?</span> <span class="fn">GetProduct</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">id)</span>
+<span class="tx">{</span>
+  <span class="kw">var</span> <span class="tx">key = </span><span class="cn">CacheKeys</span><span class="tx">.</span><span class="fn">Product</span><span class="tx">(id);</span>
+
+  <span class="cm">// ⚠ .Result blocks the thread — deadlock!</span>
+<span class="hl">  <span class="kw">return</span> <span class="tx">_cache.</span><span class="fn">GetOrCreateAsync</span><span class="tx">(key,</span></span>
+<span class="hl">    <span class="kw">async</span> <span class="tx">e =&gt; </span><span class="kw">await</span> <span class="tx">_repo.</span><span class="fn">GetAsync</span><span class="tx">(id))</span></span>
+<span class="hl">    <span class="tx">.Result;</span>   <span class="cm">// ← deadlock in ASP.NET Core</span></span>
+<span class="tx">}</span>
+
+<span class="cm">// also bad — sync method calling async repo</span>
+<span class="kw">public</span> <span class="cn">List</span><span class="tx">&lt;</span><span class="cn">Product</span><span class="tx">&gt;</span> <span class="fn">GetAll</span><span class="tx">()</span>
+<span class="tx">{</span>
+<span class="hl">  <span class="kw">return</span> <span class="tx">_repo.</span><span class="fn">GetAllAsync</span><span class="tx">()</span></span>
+<span class="hl">    <span class="tx">.GetAwaiter().</span><span class="fn">GetResult</span><span class="tx">();  </span><span class="cm">// ← deadlock</span></span>
+<span class="tx">}</span></pre>
+      </div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — async all the way up</div>
+<pre class="cp"><span class="cm">// ✓ async method — await all the way up</span>
+<span class="gl"><span class="kw">public async</span> <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">Product</span><span class="tx">?&gt;</span></span>
+<span class="gl">  <span class="fn">GetProductAsync</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">id)</span></span>
+<span class="gl"><span class="tx">{</span></span>
+<span class="gl">  <span class="kw">return await</span> <span class="tx">_cache.</span><span class="fn">GetOrCreateAsync</span><span class="tx">(</span></span>
+<span class="gl">    <span class="cn">CacheKeys</span><span class="tx">.</span><span class="fn">Product</span><span class="tx">(id),</span></span>
+<span class="gl">    <span class="kw">async</span> <span class="tx">entry =&gt;</span></span>
+<span class="gl">    <span class="tx">{</span></span>
+<span class="gl">      <span class="tx">entry.AbsoluteExpirationRelativeToNow</span></span>
+<span class="gl">        <span class="tx">= </span><span class="cn">CacheExpiry</span><span class="tx">.Product;</span></span>
+<span class="gl">      <span class="cm">// ✓ awaited — no thread blocking</span></span>
+<span class="gl">      <span class="kw">return await</span> <span class="tx">_repo.</span><span class="fn">GetAsync</span><span class="tx">(id);</span></span>
+<span class="gl">    <span class="tx">});</span></span>
+<span class="gl"><span class="tx">}</span></span>
+
+<span class="cm">// ✓ controller uses async action</span>
+<span class="tx">[</span><span class="cn">HttpGet</span><span class="tx">(</span><span class="st">"{id}"</span><span class="tx">)]</span>
+<span class="kw">public async</span> <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">IActionResult</span><span class="tx">&gt;</span>
+  <span class="fn">Get</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">id)</span>
+<span class="tx">{</span>
+  <span class="kw">var</span> <span class="tx">product =</span>
+    <span class="kw">await</span> <span class="tx">_service.</span><span class="fn">GetProductAsync</span><span class="tx">(id);</span>
+  <span class="kw">return</span> <span class="tx">product </span><span class="kw">is null</span>
+    <span class="tx">? </span><span class="fn">NotFound</span><span class="tx">() : </span><span class="fn">Ok</span><span class="tx">(product);</span>
+<span class="tx">}</span></pre>
+      </div>
+    </div>
+    <div class="pbox" style="background:#FCEDECaa;border-color:var(--red);">
+      <div class="pb-lbl" style="color:var(--red);">Never use .Result, .Wait(), .GetAwaiter().GetResult() on async cache methods in ASP.NET Core</div>
+      The synchronization context causes deadlock. async/await must flow from the controller all the way down to the repository. No exceptions.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     8. GENERIC CACHE HELPER
+══════════════════════════════ -->
+<div class="card" id="c8">
+  <div class="card-head">
+    <div class="card-icon" style="background:#FBF0E0aa;">🔧</div>
+    <div class="card-meta">
+      <div class="card-name">8. Generic GetOrSetAsync Helper</div>
+      <div class="card-sub">The same check-load-set pattern repeated in every method — extract to a reusable generic helper.</div>
+      <div class="card-tags">
+        <span class="ctag b-a">🟡 High</span>
+        <span class="ctag b-a">DRY violation</span>
+        <span class="ctag b-g">Extract Method fix</span>
+      </div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="grid2">
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — repeated in every method</div>
+<pre class="cp"><span class="cm">// ⚠ same 5-line pattern in every service method</span>
+<span class="kw">public async</span> <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">Product</span><span class="tx">?&gt; </span><span class="fn">GetProductAsync</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">id)</span>
+<span class="tx">{</span>
+<span class="hl">  <span class="kw">var</span> <span class="tx">key = </span><span class="cn">CacheKeys</span><span class="tx">.</span><span class="fn">Product</span><span class="tx">(id);</span></span>
+<span class="hl">  <span class="kw">if</span> <span class="tx">(_cache.</span><span class="fn">TryGetValue</span><span class="tx">(key, </span><span class="kw">out</span> <span class="cn">Product</span><span class="tx">? p))</span></span>
+<span class="hl">    <span class="kw">return</span> <span class="tx">p;</span></span>
+<span class="hl">  <span class="tx">p = </span><span class="kw">await</span> <span class="tx">_repo.</span><span class="fn">GetAsync</span><span class="tx">(id);</span></span>
+<span class="hl">  <span class="tx">_cache.</span><span class="fn">Set</span><span class="tx">(key, p, </span><span class="cn">CacheExpiry</span><span class="tx">.Product);</span></span>
+  <span class="kw">return</span> <span class="tx">p;</span>
+<span class="tx">}</span>
+
+<span class="kw">public async</span> <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">User</span><span class="tx">?&gt; </span><span class="fn">GetUserAsync</span><span class="tx">(</span><span class="cn">Guid</span> <span class="tx">id)</span>
+<span class="tx">{</span>
+<span class="hl">  <span class="cm">// same 5 lines again...</span></span>
+<span class="tx">}</span></pre>
+      </div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — generic GetOrSetAsync</div>
+<pre class="cp"><span class="cm">// reusable extension method</span>
+<span class="gl"><span class="kw">public static class</span> <span class="cn">CacheExtensions</span></span>
+<span class="gl"><span class="tx">{</span></span>
+<span class="gl">  <span class="kw">public static async</span> <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">T</span><span class="tx">?&gt;</span></span>
+<span class="gl">    <span class="fn">GetOrSetAsync</span><span class="tx">&lt;</span><span class="cn">T</span><span class="tx">&gt;(</span></span>
+<span class="gl">      <span class="kw">this</span> <span class="cn">IMemoryCache</span> <span class="tx">cache,</span></span>
+<span class="gl">      <span class="cn">string</span> <span class="tx">key,</span></span>
+<span class="gl">      <span class="cn">Func</span><span class="tx">&lt;</span><span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">T</span><span class="tx">?&gt;&gt; factory,</span></span>
+<span class="gl">      <span class="cn">TimeSpan</span><span class="tx">? expiry = </span><span class="kw">null</span><span class="tx">)</span></span>
+<span class="gl">    <span class="tx">where </span><span class="cn">T</span> <span class="tx">: </span><span class="kw">class</span></span>
+<span class="gl">  <span class="tx">{</span></span>
+<span class="gl">    <span class="kw">if</span> <span class="tx">(cache.</span><span class="fn">TryGetValue</span><span class="tx">(key, </span><span class="kw">out</span> <span class="cn">T</span><span class="tx">? cached))</span></span>
+<span class="gl">      <span class="kw">return</span> <span class="tx">cached;</span></span>
+
+<span class="gl">    <span class="kw">var</span> <span class="tx">value = </span><span class="kw">await</span> <span class="tx">factory();</span></span>
+<span class="gl">    <span class="kw">if</span> <span class="tx">(value </span><span class="kw">is not null</span><span class="tx">)</span></span>
+<span class="gl">      <span class="tx">cache.</span><span class="fn">Set</span><span class="tx">(key, value,</span></span>
+<span class="gl">        <span class="tx">expiry ?? </span><span class="cn">TimeSpan</span><span class="tx">.</span><span class="fn">FromMinutes</span><span class="tx">(</span><span class="nu">5</span><span class="tx">));</span></span>
+<span class="gl">    <span class="kw">return</span> <span class="tx">value;</span></span>
+<span class="gl">  <span class="tx">}</span></span>
+<span class="gl"><span class="tx">}</span></span>
+
+<span class="cm">// usage — one clean line per method</span>
+<span class="kw">public</span> <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">Product</span><span class="tx">?&gt; </span><span class="fn">GetProductAsync</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">id)</span>
+<span class="gl">  <span class="tx">=&gt; _cache.</span><span class="fn">GetOrSetAsync</span><span class="tx">(</span></span>
+<span class="gl">       <span class="cn">CacheKeys</span><span class="tx">.</span><span class="fn">Product</span><span class="tx">(id),</span></span>
+<span class="gl">       <span class="tx">() =&gt; _repo.</span><span class="fn">GetAsync</span><span class="tx">(id),</span></span>
+<span class="gl">       <span class="cn">CacheExpiry</span><span class="tx">.Product);</span></span>
+
+<span class="kw">public</span> <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">User</span><span class="tx">?&gt; </span><span class="fn">GetUserAsync</span><span class="tx">(</span><span class="cn">Guid</span> <span class="tx">id)</span>
+<span class="gl">  <span class="tx">=&gt; _cache.</span><span class="fn">GetOrSetAsync</span><span class="tx">(</span></span>
+<span class="gl">       <span class="cn">CacheKeys</span><span class="tx">.</span><span class="fn">UserProfile</span><span class="tx">(id),</span></span>
+<span class="gl">       <span class="tx">() =&gt; _repo.</span><span class="fn">GetUserAsync</span><span class="tx">(id),</span></span>
+<span class="gl">       <span class="cn">CacheExpiry</span><span class="tx">.UserSession);</span></span></pre>
+      </div>
+    </div>
+    <div class="pbox" style="background:#FBF0E2aa;border-color:var(--amber);">
+      <div class="pb-lbl" style="color:var(--amber);">DRY principle applied to caching</div>
+      The check-load-set pattern is knowledge — it belongs in one place. The generic helper enforces consistent null-guarding (never cache null), consistent expiry defaults, and keeps every service method to a single expression.
+    </div>
+  </div>
+</div>
+
+<!-- SUMMARY TABLE -->
+<div class="sec-title">Summary — all 8 cache smells at a glance</div>
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px;">
+  <table class="cmp-table">
+    <thead>
+      <tr><th>#</th><th>Smell</th><th>Search for</th><th>Severity</th><th>Fix</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>1</strong></td><td>Magic key strings</td><td class="tcode">"entity_" + id inline</td><td>🔴</td><td class="tfix">static CacheKeys.Method(id)</td></tr>
+      <tr><td><strong>2</strong></td><td>No expiry / magic TTL</td><td class="tcode">_cache.Set(key, val) — no TTL</td><td>🟡</td><td class="tfix">static CacheExpiry.Product</td></tr>
+      <tr><td><strong>3</strong></td><td>Cache stampede</td><td class="tcode">TryGetValue + no lock</td><td>🔴</td><td class="tfix">SemaphoreSlim + double-check</td></tr>
+      <tr><td><strong>4</strong></td><td>Tangled cache + logic</td><td class="tcode">cache code mixed in business method</td><td>🟡</td><td class="tfix">GetOrCreateAsync pattern</td></tr>
+      <tr><td><strong>5</strong></td><td>Missing invalidation</td><td class="tcode">UpdateAsync with no Remove()</td><td>🔴</td><td class="tfix">Remove() after every write</td></tr>
+      <tr><td><strong>6</strong></td><td>IMemoryCache everywhere</td><td class="tcode">IMemoryCache in 3+ service ctors</td><td>🔴</td><td class="tfix">ICacheService abstraction</td></tr>
+      <tr><td><strong>7</strong></td><td>Blocking async cache</td><td class="tcode">.Result / .Wait() on cache call</td><td>🔴</td><td class="tfix">async/await all the way up</td></tr>
+      <tr><td><strong>8</strong></td><td>Repeated cache pattern</td><td class="tcode">same TryGetValue + Set in N methods</td><td>🟡</td><td class="tfix">generic GetOrSetAsync extension</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- GOLDEN RULES -->
+<div class="sec-title">Golden rules — memorise these</div>
+<div class="rule-strip" style="margin-bottom:20px;">
+  <div class="rule-pill" style="border-color:var(--red);">
+    <div class="rp-num" style="color:var(--red);">Rule 1</div>
+    <div class="rp-name">Never cache null</div>
+    <div class="rp-desc">A null result means the item doesn't exist — don't fill the cache with nulls. Guard with <code>if (value is not null)</code>.</div>
+  </div>
+  <div class="rule-pill" style="border-color:var(--purple);">
+    <div class="rp-num" style="color:var(--purple);">Rule 2</div>
+    <div class="rp-name">Keys are code</div>
+    <div class="rp-desc">Cache keys are a public contract. Put them in a static class. Include a version number so you can bust them globally.</div>
+  </div>
+  <div class="rule-pill" style="border-color:var(--amber);">
+    <div class="rp-num" style="color:var(--amber);">Rule 3</div>
+    <div class="rp-name">Every write busts cache</div>
+    <div class="rp-desc">Create → bust list. Update → bust entity + list. Delete → bust entity + list. No exceptions.</div>
+  </div>
+  <div class="rule-pill" style="border-color:var(--blue);">
+    <div class="rp-num" style="color:var(--blue);">Rule 4</div>
+    <div class="rp-name">Abstract IMemoryCache</div>
+    <div class="rp-desc"><code>ICacheService</code> in domain. <code>MemoryCacheService</code> in infra. Swap to Redis = one file change.</div>
+  </div>
+  <div class="rule-pill" style="border-color:var(--green);">
+    <div class="rp-num" style="color:var(--green);">Rule 5</div>
+    <div class="rp-name">async all the way</div>
+    <div class="rp-desc">Never <code>.Result</code> or <code>.Wait()</code> on a cache call inside ASP.NET Core. Deadlock guaranteed.</div>
+  </div>
+  <div class="rule-pill" style="border-color:var(--teal);">
+    <div class="rp-num" style="color:var(--teal);">Rule 6</div>
+    <div class="rp-name">Lock on miss</div>
+    <div class="rp-desc">High-traffic cache miss = stampede. Use <code>SemaphoreSlim</code> per key or <code>GetOrCreateAsync</code> built-in locking.</div>
+  </div>
+</div>
+
+</div>
+<footer>
+  <strong>C# Cache Optimization — Method-Level Reference</strong> &nbsp;·&nbsp;
+  Magic Keys · Expiry · Stampede · Cache-Aside · Invalidation · ICacheService · Async · Generic Helper
+</footer>
+</body>
+</html>

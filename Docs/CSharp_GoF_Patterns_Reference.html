@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GoF Design Patterns — C# Refactoring Reference</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700;800&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --ink:#0F0E1A; --bg:#F6F5FD; --surface:#FFF; --border:#E2DFF5;
+  --purple:#4C44B0; --teal:#0C6650; --amber:#A86510; --red:#B0302A;
+  --blue:#1558A0; --green:#1A7A45; --coral:#8B2910; --pink:#8B1A5C;
+  --muted:#6B6887; --mono:'JetBrains Mono',monospace; --sans:'Inter',system-ui,sans-serif;
+}
+html{font-family:var(--sans);background:var(--bg);color:var(--ink);}
+body{padding-bottom:60px;}
+
+/* HEADER */
+header{background:var(--ink);color:#fff;padding:28px 36px 24px;position:relative;overflow:hidden;}
+header::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(76,68,176,.5) 0%,transparent 60%);}
+.h-eye{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.14em;color:#9B98CC;text-transform:uppercase;margin-bottom:8px;position:relative;}
+header h1{font-size:clamp(20px,4vw,28px);font-weight:800;letter-spacing:-.02em;position:relative;}
+header h1 em{font-style:normal;color:#A09BF0;}
+header p{margin-top:8px;font-size:12.5px;color:#AAA8CC;line-height:1.6;position:relative;max-width:640px;}
+.h-pills{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px;position:relative;}
+.h-pill{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(255,255,255,.1);color:#D4D2F0;border:1px solid rgba(255,255,255,.12);}
+
+/* NAV BAR */
+.nav-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 36px;display:flex;gap:6px;flex-wrap:wrap;position:sticky;top:0;z-index:10;}
+.nav-btn{padding:5px 13px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid var(--border);background:transparent;cursor:pointer;color:var(--muted);transition:all .15s;text-decoration:none;white-space:nowrap;}
+.nav-btn:hover{background:var(--bg);}
+
+/* WRAP */
+.wrap{max-width:1060px;margin:0 auto;padding:28px 20px 0;}
+
+/* SECTION TITLE */
+.sec-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:32px 0 14px;display:flex;align-items:center;gap:10px;}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* PATTERN CARD */
+.pattern-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:20px;}
+.pc-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:14px;}
+.pc-num{width:40px;height:40px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.pc-meta{flex:1;}
+.pc-name{font-size:16px;font-weight:800;letter-spacing:-.01em;}
+.pc-tagline{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5;}
+.pc-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.pc-tag{font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;font-family:var(--mono);}
+
+/* BODY */
+.pc-body{padding:18px 20px;}
+.pc-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:680px){.pc-grid{grid-template-columns:1fr;}}
+
+/* CODE BLOCK */
+.cb{background:#1A1830;border-radius:10px;overflow:hidden;}
+.cb-label{padding:7px 14px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-family:var(--sans);border-bottom:1px solid rgba(255,255,255,.06);}
+.cb-bad .cb-label{background:rgba(176,48,42,.3);color:#F5A0A0;}
+.cb-good .cb-label{background:rgba(26,122,69,.3);color:#8FDAAA;}
+.cb-neutral .cb-label{background:rgba(76,68,176,.3);color:#C4C0F5;}
+pre.cp{padding:11px 14px;font-family:var(--mono);font-size:10.5px;line-height:1.7;color:#EEFFFF;white-space:pre;overflow-x:auto;margin:0;}
+.kw{color:#C792EA;} .cn{color:#FFCB6B;} .st{color:#C3E88D;}
+.cm{color:#546E7A;font-style:italic;} .nu{color:#F78C6C;}
+.fn{color:#82AAFF;} .tx{color:#EEFFFF;} .de{color:#F07178;}
+.hl{background:rgba(255,80,80,.15);display:block;margin:0 -14px;padding:0 14px;}
+.gl{background:rgba(26,180,90,.12);display:block;margin:0 -14px;padding:0 14px;}
+
+/* EXPLAIN */
+.explain{background:var(--bg);border-radius:10px;padding:13px 15px;margin-top:12px;}
+.exp-title{font-size:11.5px;font-weight:700;color:var(--ink);margin-bottom:7px;display:flex;align-items:center;gap:6px;}
+.exp-list{list-style:none;}
+.exp-list li{font-size:11.5px;color:var(--muted);padding:4px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:flex-start;line-height:1.5;}
+.exp-list li:last-child{border-bottom:none;}
+.exp-list li::before{content:'→';color:var(--border);flex-shrink:0;margin-top:1px;}
+.exp-list li strong{color:var(--ink);font-weight:600;}
+
+/* PRINCIPLE BOX */
+.pbox{border-radius:10px;padding:11px 14px;border-left:3px solid;margin-top:10px;font-size:12px;line-height:1.6;}
+.pbox .pb-lbl{font-size:10px;font-weight:700;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
+
+/* USE WHEN */
+.use-when{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;}
+@media(max-width:580px){.use-when{grid-template-columns:1fr;}}
+.uw-card{border-radius:8px;padding:10px 12px;}
+.uw-card .uw-title{font-size:11px;font-weight:700;margin-bottom:4px;}
+.uw-list{list-style:none;}
+.uw-list li{font-size:11px;color:var(--muted);padding:2px 0;display:flex;gap:6px;}
+.uw-list li.yes::before{content:'✓';color:var(--green);flex-shrink:0;}
+.uw-list li.no::before{content:'✗';color:var(--red);flex-shrink:0;}
+
+/* DI SNIPPET */
+.di-strip{background:#1A1830;border-radius:8px;padding:10px 14px;margin-top:10px;font-family:var(--mono);font-size:10.5px;line-height:1.7;color:#EEFFFF;overflow-x:auto;}
+
+/* SUMMARY TABLE */
+.sum-table{width:100%;border-collapse:collapse;font-size:12px;}
+.sum-table th{padding:9px 14px;text-align:left;background:var(--bg);border-bottom:2px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);}
+.sum-table td{padding:8px 14px;border-bottom:1px solid var(--border);vertical-align:top;}
+.sum-table tr:hover td{background:var(--bg);}
+.sum-table tr:last-child td{border-bottom:none;}
+.tcode{font-family:var(--mono);font-size:10.5px;color:var(--red);}
+.tfix{font-family:var(--mono);font-size:10.5px;color:var(--green);}
+.badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;font-family:var(--mono);}
+
+footer{margin-top:44px;background:var(--ink);color:#AAA8CC;font-size:11px;text-align:center;padding:14px;}
+footer strong{color:#fff;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="h-eye">GoF Design Patterns · C# · Priority 9/10 · Must Know</div>
+  <h1>8 Design Patterns<br><em>for Refactoring Tests</em></h1>
+  <p>Every pattern that appears in Senior/Lead C# refactoring tests — with the bad code smell it fixes, a clean C# before/after, when to use it, and the DI registration.</p>
+  <div class="h-pills">
+    <span class="h-pill">Strategy</span>
+    <span class="h-pill">Repository</span>
+    <span class="h-pill">Factory</span>
+    <span class="h-pill">Decorator</span>
+    <span class="h-pill">State</span>
+    <span class="h-pill">Observer</span>
+    <span class="h-pill">Adapter</span>
+    <span class="h-pill">Mediator</span>
+  </div>
+</header>
+
+<!-- NAV -->
+<div class="nav-bar">
+  <a class="nav-btn" href="#p1" style="border-color:#CCC9F5;color:var(--purple);">1 Strategy</a>
+  <a class="nav-btn" href="#p2" style="border-color:#A8D9CA;color:var(--teal);">2 Repository</a>
+  <a class="nav-btn" href="#p3" style="border-color:#EFD09A;color:var(--amber);">3 Factory</a>
+  <a class="nav-btn" href="#p4" style="border-color:#F5C0BC;color:var(--red);">4 Decorator</a>
+  <a class="nav-btn" href="#p5" style="border-color:#B5CDEF;color:var(--blue);">5 State</a>
+  <a class="nav-btn" href="#p6" style="border-color:#A8DABB;color:var(--green);">6 Observer</a>
+  <a class="nav-btn" href="#p7" style="border-color:#EECFE8;color:var(--pink);">7 Adapter</a>
+  <a class="nav-btn" href="#p8" style="border-color:#E0C9F5;color:#6B22B0;">8 Mediator</a>
+</div>
+
+<div class="wrap">
+
+<!-- ═══════════════════════════════════════
+     1. STRATEGY
+════════════════════════════════════════ -->
+<div class="sec-title">Behavioural Patterns</div>
+
+<div class="pattern-card" id="p1">
+  <div class="pc-header">
+    <div class="pc-num" style="background:#EEECFCaa;">🔀</div>
+    <div class="pc-meta">
+      <div class="pc-name">1. Strategy</div>
+      <div class="pc-tagline">Replace if/switch on type — each variant becomes its own class implementing a shared interface.</div>
+      <div class="pc-tags">
+        <span class="pc-tag" style="background:#EEECFCaa;color:var(--purple);border:1px solid #CCC9F5;">Behavioural</span>
+        <span class="pc-tag" style="background:#FCEDECaa;color:var(--red);border:1px solid #F5C0BC;">OCP</span>
+        <span class="pc-tag" style="background:#EEECFCaa;color:var(--purple);border:1px solid #CCC9F5;">🔴 Most common in tests</span>
+      </div>
+    </div>
+  </div>
+  <div class="pc-body">
+    <div class="pc-grid">
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — switch grows with every type</div>
+<pre class="cp"><span class="kw">public</span> <span class="cn">decimal</span> <span class="fn">GetDiscount</span><span class="tx">(</span><span class="cn">string</span> <span class="tx">type,</span>
+  <span class="cn">decimal</span> <span class="tx">total)</span>
+<span class="tx">{</span>
+<span class="hl">  <span class="kw">if</span> <span class="tx">(type == </span><span class="st">"VIP"</span><span class="tx">)    </span><span class="kw">return</span> <span class="tx">total * </span><span class="nu">.30m</span><span class="tx">;</span></span>
+<span class="hl">  <span class="kw">if</span> <span class="tx">(type == </span><span class="st">"Member"</span><span class="tx">) </span><span class="kw">return</span> <span class="tx">total * </span><span class="nu">.15m</span><span class="tx">;</span></span>
+<span class="hl">  <span class="kw">if</span> <span class="tx">(type == </span><span class="st">"New"</span><span class="tx">)    </span><span class="kw">return</span> <span class="tx">total * </span><span class="nu">.05m</span><span class="tx">;</span></span>
+  <span class="cm">// add type = EDIT THIS METHOD</span>
+  <span class="kw">return</span> <span class="nu">0m</span><span class="tx">;</span>
+<span class="tx">}</span></pre>
+      </div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — Strategy pattern</div>
+<pre class="cp"><span class="kw">public interface</span> <span class="cn">IDiscountStrategy</span>
+<span class="tx">{</span>
+  <span class="cn">string</span>  <span class="tx">CustomerType { </span><span class="kw">get</span><span class="tx">; }</span>
+  <span class="cn">decimal</span> <span class="fn">Calculate</span><span class="tx">(</span><span class="cn">decimal</span> <span class="tx">total);</span>
+<span class="tx">}</span>
+<span class="gl"><span class="kw">public class</span> <span class="cn">VipDiscount</span> <span class="tx">:</span> <span class="cn">IDiscountStrategy</span></span>
+<span class="gl"><span class="tx">{</span></span>
+<span class="gl">  <span class="kw">public string</span>  <span class="tx">CustomerType =&gt; </span><span class="st">"VIP"</span><span class="tx">;</span></span>
+<span class="gl">  <span class="kw">public decimal</span> <span class="fn">Calculate</span><span class="tx">(</span><span class="cn">decimal</span> <span class="tx">t) =&gt; t*</span><span class="nu">.30m</span><span class="tx">;</span></span>
+<span class="gl"><span class="tx">}</span></span>
+<span class="cm">// add type = add 1 class, touch nothing</span>
+
+<span class="kw">public class</span> <span class="cn">DiscountService</span>
+<span class="tx">{</span>
+  <span class="kw">private readonly</span> <span class="cn">Dictionary</span><span class="tx">&lt;</span><span class="cn">string</span><span class="tx">,</span>
+    <span class="cn">IDiscountStrategy</span><span class="tx">&gt; _map;</span>
+  <span class="kw">public</span> <span class="cn">DiscountService</span><span class="tx">(</span>
+    <span class="cn">IEnumerable</span><span class="tx">&lt;</span><span class="cn">IDiscountStrategy</span><span class="tx">&gt; s)</span>
+    <span class="tx">=&gt; _map = s.</span><span class="fn">ToDictionary</span><span class="tx">(x=&gt;x.CustomerType);</span>
+  <span class="kw">public decimal</span> <span class="fn">GetDiscount</span><span class="tx">(</span><span class="cn">string</span> <span class="tx">t,</span>
+    <span class="cn">decimal</span> <span class="tx">total)</span>
+    <span class="tx">=&gt; _map.</span><span class="fn">TryGetValue</span><span class="tx">(t, </span><span class="kw">out var</span> <span class="tx">s)</span>
+       <span class="tx">? s.</span><span class="fn">Calculate</span><span class="tx">(total) : </span><span class="nu">0m</span><span class="tx">;</span>
+<span class="tx">}</span></pre>
+      </div>
+    </div>
+    <div class="explain">
+      <div class="exp-title">🔍 Smell that triggers this pattern</div>
+      <ul class="exp-list">
+        <li>Search: <strong><code>if (type == "X")</code> or <code>switch(type)</code></strong> in service classes</li>
+        <li>Adding a new type requires <strong>editing an existing method</strong></li>
+        <li>Same switch duplicated in <strong>multiple methods</strong></li>
+      </ul>
+    </div>
+    <div class="di-strip"><span class="cm">// Program.cs DI registration</span>
+<span class="tx">builder.Services.</span><span class="fn">AddScoped</span><span class="tx">&lt;</span><span class="cn">IDiscountStrategy</span><span class="tx">, </span><span class="cn">VipDiscount</span><span class="tx">&gt;();</span>
+<span class="tx">builder.Services.</span><span class="fn">AddScoped</span><span class="tx">&lt;</span><span class="cn">IDiscountStrategy</span><span class="tx">, </span><span class="cn">MemberDiscount</span><span class="tx">&gt;();</span>
+<span class="cm">// IEnumerable&lt;IDiscountStrategy&gt; auto-collects all registrations</span></div>
+    <div class="use-when">
+      <div class="uw-card" style="background:#E4F3EAaa;border:1px solid #A8DABB;">
+        <div class="uw-title" style="color:var(--green);">✓ Use when</div>
+        <ul class="uw-list">
+          <li class="yes">Multiple variants of the same algorithm</li>
+          <li class="yes">New variants added frequently</li>
+          <li class="yes">if/switch on a type string</li>
+        </ul>
+      </div>
+      <div class="uw-card" style="background:#FCEDECaa;border:1px solid #F5C0BC;">
+        <div class="uw-title" style="color:var(--red);">✗ Don't use when</div>
+        <ul class="uw-list">
+          <li class="no">Only 2 variants that never change</li>
+          <li class="no">Simple null-check or boolean guard</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     2. REPOSITORY
+════════════════════════════════════════ -->
+<div class="pattern-card" id="p2">
+  <div class="pc-header">
+    <div class="pc-num" style="background:#E0F3EEaa;">🗄</div>
+    <div class="pc-meta">
+      <div class="pc-name">2. Repository</div>
+      <div class="pc-tagline">Abstract data access — business logic never knows what database engine is used.</div>
+      <div class="pc-tags">
+        <span class="pc-tag" style="background:#E3F4EFaa;color:var(--teal);border:1px solid #A8D9CA;">Structural</span>
+        <span class="pc-tag" style="background:#EEECFCaa;color:var(--purple);border:1px solid #CCC9F5;">DIP</span>
+        <span class="pc-tag" style="background:#FCEDECaa;color:var(--red);border:1px solid #F5C0BC;">🔴 Every test has this</span>
+      </div>
+    </div>
+  </div>
+  <div class="pc-body">
+    <div class="pc-grid">
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — DB inside business logic</div>
+<pre class="cp"><span class="kw">public class</span> <span class="cn">OrderService</span>
+<span class="tx">{</span>
+  <span class="kw">public</span> <span class="cn">Order</span> <span class="fn">GetOrder</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">id)</span>
+  <span class="tx">{</span>
+<span class="hl">    <span class="kw">var</span> <span class="tx">conn = </span><span class="kw">new</span> <span class="cn">SqlConnection</span><span class="tx">(</span><span class="st">"..."</span><span class="tx">);</span></span>
+<span class="hl">    <span class="kw">return</span> <span class="tx">conn.</span><span class="fn">QueryFirst</span><span class="tx">&lt;</span><span class="cn">Order</span><span class="tx">&gt;(</span></span>
+<span class="hl">      <span class="st">$"SELECT * FROM Orders WHERE Id={id}"</span><span class="tx">);</span></span>
+    <span class="cm">// SQL injection + tight coupling</span>
+  <span class="tx">}</span>
+<span class="tx">}</span></pre>
+      </div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — Repository pattern</div>
+<pre class="cp"><span class="cm">// interface in domain layer</span>
+<span class="kw">public interface</span> <span class="cn">IOrderRepository</span>
+<span class="tx">{</span>
+  <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">Order</span><span class="tx">?&gt; </span><span class="fn">GetByIdAsync</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">id);</span>
+  <span class="cn">Task</span>          <span class="fn">SaveAsync</span><span class="tx">(</span><span class="cn">Order</span> <span class="tx">order);</span>
+  <span class="cn">Task</span>          <span class="fn">DeleteAsync</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">id);</span>
+<span class="tx">}</span>
+
+<span class="cm">// implementation in infra layer</span>
+<span class="gl"><span class="kw">public class</span> <span class="cn">SqlOrderRepository</span></span>
+<span class="gl">  <span class="tx">:</span> <span class="cn">IOrderRepository</span></span>
+<span class="gl"><span class="tx">{</span></span>
+<span class="gl">  <span class="kw">public async</span> <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">Order</span><span class="tx">?&gt; </span><span class="fn">GetByIdAsync</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">id)</span></span>
+<span class="gl">  <span class="tx">{</span></span>
+<span class="gl">    <span class="kw">await using var</span> <span class="tx">conn = </span><span class="kw">new</span> <span class="cn">SqlConnection</span><span class="tx">(_cs);</span></span>
+<span class="gl">    <span class="kw">return await</span> <span class="tx">conn.</span><span class="fn">QueryFirstOrDefaultAsync</span><span class="tx">&lt;</span><span class="cn">Order</span><span class="tx">&gt;(</span></span>
+<span class="gl">      <span class="st">"SELECT * FROM Orders WHERE Id=@Id"</span><span class="tx">,</span></span>
+<span class="gl">      <span class="kw">new</span> <span class="tx">{ Id = id });</span></span>
+<span class="gl">  <span class="tx">}</span></span>
+<span class="gl"><span class="tx">}</span></span>
+
+<span class="cm">// business logic — no SQL anywhere</span>
+<span class="kw">public class</span> <span class="cn">OrderService</span>
+<span class="tx">{</span>
+  <span class="kw">private readonly</span> <span class="cn">IOrderRepository</span> <span class="tx">_repo;</span>
+  <span class="kw">public</span> <span class="cn">OrderService</span><span class="tx">(</span><span class="cn">IOrderRepository</span> <span class="tx">r)</span>
+    <span class="tx">=&gt; _repo = r;</span>
+  <span class="kw">public</span> <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">Order</span><span class="tx">?&gt; </span><span class="fn">GetOrderAsync</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">id)</span>
+    <span class="tx">=&gt; _repo.</span><span class="fn">GetByIdAsync</span><span class="tx">(id);</span>
+<span class="tx">}</span></pre>
+      </div>
+    </div>
+    <div class="explain">
+      <div class="exp-title">🔍 Smell that triggers this pattern</div>
+      <ul class="exp-list">
+        <li>Search: <strong><code>new SqlConnection(</code></strong> inside a service class</li>
+        <li>Search: <strong><code>$"SELECT ... {variable}"</code></strong> — SQL injection</li>
+        <li>Cannot unit test service without a <strong>real database running</strong></li>
+        <li>Changing from Dapper → EF Core means <strong>editing service logic</strong></li>
+      </ul>
+    </div>
+    <div class="di-strip"><span class="tx">builder.Services.</span><span class="fn">AddScoped</span><span class="tx">&lt;</span><span class="cn">IOrderRepository</span><span class="tx">, </span><span class="cn">SqlOrderRepository</span><span class="tx">&gt;();</span>
+<span class="cm">// test: new Mock&lt;IOrderRepository&gt;() — no DB needed</span></div>
+    <div class="use-when">
+      <div class="uw-card" style="background:#E4F3EAaa;border:1px solid #A8DABB;">
+        <div class="uw-title" style="color:var(--green);">✓ Use when</div>
+        <ul class="uw-list">
+          <li class="yes">Any class reads/writes a database</li>
+          <li class="yes">Need to swap DB engine or mock in tests</li>
+          <li class="yes">Business logic must stay DB-agnostic</li>
+        </ul>
+      </div>
+      <div class="uw-card" style="background:#FCEDECaa;border:1px solid #F5C0BC;">
+        <div class="uw-title" style="color:var(--red);">✗ Don't use when</div>
+        <ul class="uw-list">
+          <li class="no">Simple CRUD script, no business logic</li>
+          <li class="no">Using Event Sourcing (use event store instead)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     3. FACTORY
+════════════════════════════════════════ -->
+<div class="pattern-card" id="p3">
+  <div class="pc-header">
+    <div class="pc-num" style="background:#FBF0E0aa;">🏭</div>
+    <div class="pc-meta">
+      <div class="pc-name">3. Factory / Factory Method</div>
+      <div class="pc-tagline">Encapsulate object creation — callers ask for an object without knowing the concrete type.</div>
+      <div class="pc-tags">
+        <span class="pc-tag" style="background:#FBF0E2aa;color:var(--amber);border:1px solid #EFD09A;">Creational</span>
+        <span class="pc-tag" style="background:#EEECFCaa;color:var(--purple);border:1px solid #CCC9F5;">OCP</span>
+        <span class="pc-tag" style="background:#FBF0E2aa;color:var(--amber);border:1px solid #EFD09A;">🟡 Common in tests</span>
+      </div>
+    </div>
+  </div>
+  <div class="pc-body">
+    <div class="pc-grid">
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — creation scattered in callers</div>
+<pre class="cp"><span class="cm">// caller must know all concrete types</span>
+<span class="kw">IPaymentGateway</span> <span class="tx">gw;</span>
+<span class="hl"><span class="kw">if</span> <span class="tx">(method == </span><span class="st">"stripe"</span><span class="tx">)</span></span>
+<span class="hl">  <span class="tx">gw = </span><span class="kw">new</span> <span class="cn">StripeGateway</span><span class="tx">(</span><span class="st">"sk_live_"</span><span class="tx">);</span></span>
+<span class="hl"><span class="kw">else if</span> <span class="tx">(method == </span><span class="st">"paypal"</span><span class="tx">)</span></span>
+<span class="hl">  <span class="tx">gw = </span><span class="kw">new</span> <span class="cn">PayPalGateway</span><span class="tx">(</span><span class="st">"id"</span><span class="tx">, </span><span class="st">"sec"</span><span class="tx">);</span></span>
+<span class="cm">// duplicated in every caller</span></pre>
+      </div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — Factory pattern</div>
+<pre class="cp"><span class="kw">public interface</span> <span class="cn">IPaymentGatewayFactory</span>
+<span class="tx">{</span>
+  <span class="cn">IPaymentGateway</span> <span class="fn">Create</span><span class="tx">(</span><span class="cn">string</span> <span class="tx">method);</span>
+<span class="tx">}</span>
+
+<span class="gl"><span class="kw">public class</span> <span class="cn">PaymentGatewayFactory</span></span>
+<span class="gl">  <span class="tx">:</span> <span class="cn">IPaymentGatewayFactory</span></span>
+<span class="gl"><span class="tx">{</span></span>
+<span class="gl">  <span class="kw">private readonly</span> <span class="cn">IConfiguration</span> <span class="tx">_cfg;</span></span>
+<span class="gl">  <span class="kw">public</span> <span class="cn">PaymentGatewayFactory</span><span class="tx">(</span><span class="cn">IConfiguration</span> <span class="tx">c)</span></span>
+<span class="gl">    <span class="tx">=&gt; _cfg = c;</span></span>
+
+<span class="gl">  <span class="kw">public</span> <span class="cn">IPaymentGateway</span> <span class="fn">Create</span><span class="tx">(</span><span class="cn">string</span> <span class="tx">method)</span></span>
+<span class="gl">    <span class="tx">=&gt; method </span><span class="kw">switch</span></span>
+<span class="gl">    <span class="tx">{</span></span>
+<span class="gl">      <span class="st">"stripe"</span> <span class="tx">=&gt; </span><span class="kw">new</span> <span class="cn">StripeGateway</span><span class="tx">(</span></span>
+<span class="gl">        <span class="tx">_cfg[</span><span class="st">"Stripe:Key"</span><span class="tx">]!),</span></span>
+<span class="gl">      <span class="st">"paypal"</span> <span class="tx">=&gt; </span><span class="kw">new</span> <span class="cn">PayPalGateway</span><span class="tx">(</span></span>
+<span class="gl">        <span class="tx">_cfg[</span><span class="st">"PayPal:Id"</span><span class="tx">]!, _cfg[</span><span class="st">"PayPal:Secret"</span><span class="tx">]!),</span></span>
+<span class="gl">      <span class="tx">_ =&gt; </span><span class="kw">throw new</span> <span class="cn">NotSupportedException</span><span class="tx">(method)</span></span>
+<span class="gl">    <span class="tx">};</span></span>
+<span class="gl"><span class="tx">}</span></span>
+
+<span class="cm">// caller — knows nothing about concrete types</span>
+<span class="kw">var</span> <span class="tx">gw = _factory.</span><span class="fn">Create</span><span class="tx">(method);</span>
+<span class="kw">await</span> <span class="tx">gw.</span><span class="fn">ChargeAsync</span><span class="tx">(amount, token);</span></pre>
+      </div>
+    </div>
+    <div class="explain">
+      <div class="exp-title">🔍 Smell that triggers this pattern</div>
+      <ul class="exp-list">
+        <li>Same <strong><code>if/switch + new ConcreteClass()</code></strong> block copied in multiple callers</li>
+        <li>Caller must know <strong>constructor args</strong> of every concrete type</li>
+        <li>Adding a new payment method → <strong>edit every caller</strong></li>
+      </ul>
+    </div>
+    <div class="di-strip"><span class="tx">builder.Services.</span><span class="fn">AddSingleton</span><span class="tx">&lt;</span><span class="cn">IPaymentGatewayFactory</span><span class="tx">, </span><span class="cn">PaymentGatewayFactory</span><span class="tx">&gt;();</span></div>
+    <div class="use-when">
+      <div class="uw-card" style="background:#E4F3EAaa;border:1px solid #A8DABB;">
+        <div class="uw-title" style="color:var(--green);">✓ Use when</div>
+        <ul class="uw-list">
+          <li class="yes">Object creation logic is complex or conditional</li>
+          <li class="yes">Multiple callers need same creation logic</li>
+          <li class="yes">Creation requires config / secrets</li>
+        </ul>
+      </div>
+      <div class="uw-card" style="background:#FCEDECaa;border:1px solid #F5C0BC;">
+        <div class="uw-title" style="color:var(--red);">✗ Don't use when</div>
+        <ul class="uw-list">
+          <li class="no">Simple <code>new Foo()</code> with no variants</li>
+          <li class="no">DI container already handles creation</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     4. DECORATOR
+════════════════════════════════════════ -->
+<div class="pattern-card" id="p4">
+  <div class="pc-header">
+    <div class="pc-num" style="background:#FCEDECaa;">🎁</div>
+    <div class="pc-meta">
+      <div class="pc-name">4. Decorator</div>
+      <div class="pc-tagline">Add behaviour without editing — wrap an existing class with the same interface to layer on cross-cutting concerns.</div>
+      <div class="pc-tags">
+        <span class="pc-tag" style="background:#FCEDECaa;color:var(--red);border:1px solid #F5C0BC;">Structural</span>
+        <span class="pc-tag" style="background:#FCEDECaa;color:var(--red);border:1px solid #F5C0BC;">OCP</span>
+        <span class="pc-tag" style="background:#FBF0E2aa;color:var(--amber);border:1px solid #EFD09A;">🟡 Common in tests</span>
+      </div>
+    </div>
+  </div>
+  <div class="pc-body">
+    <div class="pc-grid">
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — logging tangled in business logic</div>
+<pre class="cp"><span class="kw">public class</span> <span class="cn">OrderRepository</span> <span class="tx">:</span> <span class="cn">IOrderRepository</span>
+<span class="tx">{</span>
+  <span class="kw">public async</span> <span class="cn">Task</span> <span class="fn">SaveAsync</span><span class="tx">(</span><span class="cn">Order</span> <span class="tx">o)</span>
+  <span class="tx">{</span>
+<span class="hl">    <span class="tx">_logger.</span><span class="fn">LogInformation</span><span class="tx">(</span><span class="st">"Saving {Id}"</span><span class="tx">, o.Id);</span></span>
+    <span class="cm">// actual save logic</span>
+    <span class="kw">await</span> <span class="tx">_db.</span><span class="fn">ExecuteAsync</span><span class="tx">(...</span><span class="tx">);</span>
+<span class="hl">    <span class="tx">_logger.</span><span class="fn">LogInformation</span><span class="tx">(</span><span class="st">"Saved {Id}"</span><span class="tx">, o.Id);</span></span>
+    <span class="cm">// logging = separate concern mixed in</span>
+  <span class="tx">}</span>
+<span class="tx">}</span></pre>
+      </div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — Decorator wraps the real repo</div>
+<pre class="cp"><span class="cm">// real implementation — clean, no logging</span>
+<span class="kw">public class</span> <span class="cn">SqlOrderRepository</span>
+  <span class="tx">:</span> <span class="cn">IOrderRepository</span>
+<span class="tx">{</span>
+  <span class="kw">public async</span> <span class="cn">Task</span> <span class="fn">SaveAsync</span><span class="tx">(</span><span class="cn">Order</span> <span class="tx">o)</span>
+    <span class="tx">=&gt; </span><span class="kw">await</span> <span class="tx">_db.</span><span class="fn">ExecuteAsync</span><span class="tx">(...</span><span class="tx">);</span>
+<span class="tx">}</span>
+
+<span class="cm">// decorator adds logging transparently</span>
+<span class="gl"><span class="kw">public class</span> <span class="cn">LoggingOrderRepository</span></span>
+<span class="gl">  <span class="tx">:</span> <span class="cn">IOrderRepository</span></span>
+<span class="gl"><span class="tx">{</span></span>
+<span class="gl">  <span class="kw">private readonly</span> <span class="cn">IOrderRepository</span> <span class="tx">_inner;</span></span>
+<span class="gl">  <span class="kw">private readonly</span> <span class="cn">ILogger</span> <span class="tx">_log;</span></span>
+<span class="gl">  <span class="kw">public</span> <span class="cn">LoggingOrderRepository</span><span class="tx">(</span></span>
+<span class="gl">    <span class="cn">IOrderRepository</span> <span class="tx">inner, </span><span class="cn">ILogger</span><span class="tx">&lt;</span></span>
+<span class="gl">    <span class="cn">LoggingOrderRepository</span><span class="tx">&gt; log)</span></span>
+<span class="gl">  <span class="tx">{ _inner = inner; _log = log; }</span></span>
+
+<span class="gl">  <span class="kw">public async</span> <span class="cn">Task</span> <span class="fn">SaveAsync</span><span class="tx">(</span><span class="cn">Order</span> <span class="tx">o)</span></span>
+<span class="gl">  <span class="tx">{</span></span>
+<span class="gl">    <span class="tx">_log.</span><span class="fn">LogInformation</span><span class="tx">(</span><span class="st">"Saving {Id}"</span><span class="tx">, o.Id);</span></span>
+<span class="gl">    <span class="kw">await</span> <span class="tx">_inner.</span><span class="fn">SaveAsync</span><span class="tx">(o);  </span><span class="cm">// delegate</span></span>
+<span class="gl">    <span class="tx">_log.</span><span class="fn">LogInformation</span><span class="tx">(</span><span class="st">"Saved {Id}"</span><span class="tx">, o.Id);</span></span>
+<span class="gl">  <span class="tx">}</span></span>
+<span class="gl"><span class="tx">}</span></span>
+<span class="cm">// Scrutor NuGet makes DI easy:</span>
+<span class="cm">// services.Decorate&lt;IOrderRepository,</span>
+<span class="cm">//                  LoggingOrderRepository&gt;();</span></pre>
+      </div>
+    </div>
+    <div class="explain">
+      <div class="exp-title">🔍 Smell that triggers this pattern</div>
+      <ul class="exp-list">
+        <li>Logging, caching, timing, retry code <strong>mixed into core business methods</strong></li>
+        <li>Same cross-cutting concern copy-pasted across <strong>multiple classes</strong></li>
+        <li>Adding caching means <strong>editing the real implementation</strong></li>
+      </ul>
+    </div>
+    <div class="di-strip"><span class="cm">// Scrutor package — clean decorator registration</span>
+<span class="tx">services.</span><span class="fn">AddScoped</span><span class="tx">&lt;</span><span class="cn">IOrderRepository</span><span class="tx">, </span><span class="cn">SqlOrderRepository</span><span class="tx">&gt;();</span>
+<span class="tx">services.</span><span class="fn">Decorate</span><span class="tx">&lt;</span><span class="cn">IOrderRepository</span><span class="tx">, </span><span class="cn">LoggingOrderRepository</span><span class="tx">&gt;();</span>
+<span class="tx">services.</span><span class="fn">Decorate</span><span class="tx">&lt;</span><span class="cn">IOrderRepository</span><span class="tx">, </span><span class="cn">CachingOrderRepository</span><span class="tx">&gt;();</span></div>
+    <div class="use-when">
+      <div class="uw-card" style="background:#E4F3EAaa;border:1px solid #A8DABB;">
+        <div class="uw-title" style="color:var(--green);">✓ Use when</div>
+        <ul class="uw-list">
+          <li class="yes">Adding logging / caching / retry without editing</li>
+          <li class="yes">Cross-cutting concern applies to one interface</li>
+          <li class="yes">You want layers you can toggle</li>
+        </ul>
+      </div>
+      <div class="uw-card" style="background:#FCEDECaa;border:1px solid #F5C0BC;">
+        <div class="uw-title" style="color:var(--red);">✗ Don't use when</div>
+        <ul class="uw-list">
+          <li class="no">Only one implementation will ever exist</li>
+          <li class="no">Middleware pipeline already handles it</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     5. STATE
+════════════════════════════════════════ -->
+<div class="pattern-card" id="p5">
+  <div class="pc-header">
+    <div class="pc-num" style="background:#E3EEF8aa;">🔄</div>
+    <div class="pc-meta">
+      <div class="pc-name">5. State</div>
+      <div class="pc-tagline">Status transition logic — each status owns its own behaviour and valid transitions.</div>
+      <div class="pc-tags">
+        <span class="pc-tag" style="background:#E5EEF9aa;color:var(--blue);border:1px solid #B5CDEF;">Behavioural</span>
+        <span class="pc-tag" style="background:#FCEDECaa;color:var(--red);border:1px solid #F5C0BC;">OCP</span>
+        <span class="pc-tag" style="background:#FBF0E2aa;color:var(--amber);border:1px solid #EFD09A;">🟡 Common in tests</span>
+      </div>
+    </div>
+  </div>
+  <div class="pc-body">
+    <div class="pc-grid">
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — switch in every method</div>
+<pre class="cp"><span class="kw">public void</span> <span class="fn">Process</span><span class="tx">(</span><span class="cn">Order</span> <span class="tx">o)</span>
+<span class="tx">{</span>
+<span class="hl">  <span class="kw">switch</span> <span class="tx">(o.Status) {</span></span>
+<span class="hl">    <span class="kw">case</span> <span class="st">"Pending"</span><span class="tx">:   </span><span class="fn">Validate</span><span class="tx">(o);  </span><span class="kw">break</span><span class="tx">;</span></span>
+<span class="hl">    <span class="kw">case</span> <span class="st">"Confirmed"</span><span class="tx">: </span><span class="fn">Charge</span><span class="tx">(o);    </span><span class="kw">break</span><span class="tx">;</span></span>
+<span class="hl">    <span class="kw">case</span> <span class="st">"Paid"</span><span class="tx">:      </span><span class="fn">Ship</span><span class="tx">(o);      </span><span class="kw">break</span><span class="tx">;</span></span>
+<span class="hl">  <span class="tx">}</span></span>
+<span class="tx">}</span>
+<span class="kw">public string</span> <span class="fn">GetLabel</span><span class="tx">(</span><span class="cn">Order</span> <span class="tx">o)</span>
+<span class="tx">{</span>
+<span class="hl">  <span class="cm">// same switch again — shotgun surgery</span></span>
+<span class="hl">  <span class="kw">if</span> <span class="tx">(o.Status == </span><span class="st">"Pending"</span><span class="tx">) </span><span class="kw">return</span> <span class="st">"Awaiting..."</span><span class="tx">;</span></span>
+<span class="tx">}</span></pre>
+      </div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — State pattern</div>
+<pre class="cp"><span class="kw">public interface</span> <span class="cn">IOrderState</span>
+<span class="tx">{</span>
+  <span class="cn">string</span> <span class="tx">StatusName { </span><span class="kw">get</span><span class="tx">; }</span>
+  <span class="cn">string</span> <span class="tx">Label      { </span><span class="kw">get</span><span class="tx">; }</span>
+  <span class="cn">Order</span>  <span class="fn">Process</span><span class="tx">(</span><span class="cn">Order</span> <span class="tx">order);</span>
+<span class="tx">}</span>
+
+<span class="gl"><span class="kw">public class</span> <span class="cn">PendingState</span> <span class="tx">:</span> <span class="cn">IOrderState</span></span>
+<span class="gl"><span class="tx">{</span></span>
+<span class="gl">  <span class="kw">public string</span> <span class="tx">StatusName =&gt; </span><span class="st">"Pending"</span><span class="tx">;</span></span>
+<span class="gl">  <span class="kw">public string</span> <span class="tx">Label      =&gt; </span><span class="st">"Awaiting confirmation"</span><span class="tx">;</span></span>
+<span class="gl">  <span class="kw">public</span> <span class="cn">Order</span> <span class="fn">Process</span><span class="tx">(</span><span class="cn">Order</span> <span class="tx">o)</span></span>
+<span class="gl">  <span class="tx">{ </span><span class="fn">Validate</span><span class="tx">(o); o.Status=</span><span class="st">"Confirmed"</span><span class="tx">; </span><span class="kw">return</span> <span class="tx">o; }</span></span>
+<span class="gl"><span class="tx">}</span></span>
+<span class="cm">// each status = 1 class, 1 reason to change</span>
+
+<span class="kw">public class</span> <span class="cn">OrderService</span>
+<span class="tx">{</span>
+  <span class="kw">private readonly</span> <span class="cn">Dictionary</span><span class="tx">&lt;</span><span class="cn">string</span><span class="tx">,</span><span class="cn">IOrderState</span><span class="tx">&gt; _states;</span>
+  <span class="kw">public</span> <span class="cn">Order</span>  <span class="fn">Process</span><span class="tx">(</span><span class="cn">Order</span> <span class="tx">o)</span>
+    <span class="tx">=&gt; </span><span class="fn">GetState</span><span class="tx">(o).</span><span class="fn">Process</span><span class="tx">(o);  </span><span class="cm">// no switch!</span>
+  <span class="kw">public string</span> <span class="fn">GetLabel</span><span class="tx">(</span><span class="cn">Order</span> <span class="tx">o)</span>
+    <span class="tx">=&gt; </span><span class="fn">GetState</span><span class="tx">(o).Label;         </span><span class="cm">// no switch!</span>
+<span class="tx">}</span></pre>
+      </div>
+    </div>
+    <div class="explain">
+      <div class="exp-title">🔍 Smell that triggers this pattern</div>
+      <ul class="exp-list">
+        <li>Search: <strong><code>switch(order.Status)</code></strong> in more than one method</li>
+        <li>Adding a new status requires <strong>editing multiple switch blocks</strong> (shotgun surgery)</li>
+        <li>Status + behaviour are not co-located — hard to reason about</li>
+      </ul>
+    </div>
+    <div class="di-strip"><span class="tx">builder.Services.</span><span class="fn">AddScoped</span><span class="tx">&lt;</span><span class="cn">IOrderState</span><span class="tx">, </span><span class="cn">PendingState</span><span class="tx">&gt;();</span>
+<span class="tx">builder.Services.</span><span class="fn">AddScoped</span><span class="tx">&lt;</span><span class="cn">IOrderState</span><span class="tx">, </span><span class="cn">ConfirmedState</span><span class="tx">&gt;();</span>
+<span class="tx">builder.Services.</span><span class="fn">AddScoped</span><span class="tx">&lt;</span><span class="cn">IOrderState</span><span class="tx">, </span><span class="cn">PaidState</span><span class="tx">&gt;();</span></div>
+    <div class="use-when">
+      <div class="uw-card" style="background:#E4F3EAaa;border:1px solid #A8DABB;">
+        <div class="uw-title" style="color:var(--green);">✓ Use when</div>
+        <ul class="uw-list">
+          <li class="yes">Object has multiple statuses with different behaviour</li>
+          <li class="yes">Same switch repeated in many methods</li>
+          <li class="yes">Status transitions need validation</li>
+        </ul>
+      </div>
+      <div class="uw-card" style="background:#FCEDECaa;border:1px solid #F5C0BC;">
+        <div class="uw-title" style="color:var(--red);">✗ Don't use when</div>
+        <ul class="uw-list">
+          <li class="no">Only 2 states with trivial logic</li>
+          <li class="no">Simple boolean flag is enough</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     6. OBSERVER
+════════════════════════════════════════ -->
+<div class="pattern-card" id="p6">
+  <div class="pc-header">
+    <div class="pc-num" style="background:#E0F3E8aa;">📡</div>
+    <div class="pc-meta">
+      <div class="pc-name">6. Observer / Domain Event</div>
+      <div class="pc-tagline">Decouple side effects — when something happens, notify subscribers without the source knowing who's listening.</div>
+      <div class="pc-tags">
+        <span class="pc-tag" style="background:#E4F3EAaa;color:var(--green);border:1px solid #A8DABB;">Behavioural</span>
+        <span class="pc-tag" style="background:#EEECFCaa;color:var(--purple);border:1px solid #CCC9F5;">SRP</span>
+        <span class="pc-tag" style="background:#FBF0E2aa;color:var(--amber);border:1px solid #EFD09A;">🟡 Common in tests</span>
+      </div>
+    </div>
+  </div>
+  <div class="pc-body">
+    <div class="pc-grid">
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — side effects hardcoded</div>
+<pre class="cp"><span class="kw">public void</span> <span class="fn">PlaceOrder</span><span class="tx">(</span><span class="cn">Order</span> <span class="tx">order)</span>
+<span class="tx">{</span>
+  <span class="tx">_repo.</span><span class="fn">Save</span><span class="tx">(order);</span>
+  <span class="cm">// side effects hardcoded — SRP broken</span>
+<span class="hl">  <span class="tx">_mailer.</span><span class="fn">Send</span><span class="tx">(order.Email, </span><span class="st">"Confirmed"</span><span class="tx">);</span></span>
+<span class="hl">  <span class="tx">_inventory.</span><span class="fn">Reduce</span><span class="tx">(order.Items);</span></span>
+<span class="hl">  <span class="tx">_analytics.</span><span class="fn">Track</span><span class="tx">(order);</span></span>
+  <span class="cm">// add new side effect = edit THIS method</span>
+<span class="tx">}</span></pre>
+      </div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — Domain Event pattern</div>
+<pre class="cp"><span class="cm">// 1. define the event</span>
+<span class="kw">public record</span> <span class="cn">OrderPlacedEvent</span><span class="tx">(</span><span class="cn">Order</span> <span class="tx">Order);</span>
+
+<span class="cm">// 2. handlers — one per side effect</span>
+<span class="gl"><span class="kw">public class</span> <span class="cn">SendConfirmationEmail</span></span>
+<span class="gl">  <span class="tx">:</span> <span class="cn">INotificationHandler</span><span class="tx">&lt;</span><span class="cn">OrderPlacedEvent</span><span class="tx">&gt;</span></span>
+<span class="gl"><span class="tx">{</span></span>
+<span class="gl">  <span class="kw">public</span> <span class="cn">Task</span> <span class="fn">Handle</span><span class="tx">(</span><span class="cn">OrderPlacedEvent</span> <span class="tx">e,</span></span>
+<span class="gl">    <span class="cn">CancellationToken</span> <span class="tx">ct)</span></span>
+<span class="gl">    <span class="tx">=&gt; _mailer.</span><span class="fn">SendAsync</span><span class="tx">(e.Order.Email, </span><span class="st">"Confirmed"</span><span class="tx">);</span></span>
+<span class="gl"><span class="tx">}</span></span>
+<span class="cm">// add new side effect = add new handler class</span>
+
+<span class="cm">// 3. source — only publishes, knows nothing</span>
+<span class="kw">public async</span> <span class="cn">Task</span> <span class="fn">PlaceOrderAsync</span><span class="tx">(</span><span class="cn">Order</span> <span class="tx">order)</span>
+<span class="tx">{</span>
+  <span class="tx">_repo.</span><span class="fn">Save</span><span class="tx">(order);</span>
+  <span class="cm">// publish — all handlers called automatically</span>
+  <span class="kw">await</span> <span class="tx">_mediator.</span><span class="fn">Publish</span><span class="tx">(</span>
+    <span class="kw">new</span> <span class="cn">OrderPlacedEvent</span><span class="tx">(order));</span>
+<span class="tx">}</span></pre>
+      </div>
+    </div>
+    <div class="explain">
+      <div class="exp-title">🔍 Smell that triggers this pattern</div>
+      <ul class="exp-list">
+        <li>Core method calls <strong>3+ side-effect services</strong> (email, inventory, analytics)</li>
+        <li>Adding a new side effect means <strong>editing the core method</strong></li>
+        <li>Side effects are <strong>not directly related to the core action</strong></li>
+      </ul>
+    </div>
+    <div class="di-strip"><span class="cm">// MediatR auto-discovers all INotificationHandler implementations</span>
+<span class="tx">builder.Services.</span><span class="fn">AddMediatR</span><span class="tx">(cfg =&gt;</span>
+<span class="tx">  cfg.</span><span class="fn">RegisterServicesFromAssembly</span><span class="tx">(</span><span class="kw">typeof</span><span class="tx">(</span><span class="cn">Program</span><span class="tx">).Assembly));</span></div>
+    <div class="use-when">
+      <div class="uw-card" style="background:#E4F3EAaa;border:1px solid #A8DABB;">
+        <div class="uw-title" style="color:var(--green);">✓ Use when</div>
+        <ul class="uw-list">
+          <li class="yes">Core action triggers multiple independent side effects</li>
+          <li class="yes">Side effects may change independently of core</li>
+          <li class="yes">Cross-service fan-out needed</li>
+        </ul>
+      </div>
+      <div class="uw-card" style="background:#FCEDECaa;border:1px solid #F5C0BC;">
+        <div class="uw-title" style="color:var(--red);">✗ Don't use when</div>
+        <ul class="uw-list">
+          <li class="no">Only 1 side effect, tightly coupled to core</li>
+          <li class="no">Simple callback is enough</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     7. ADAPTER
+════════════════════════════════════════ -->
+<div class="pattern-card" id="p7">
+  <div class="pc-header">
+    <div class="pc-num" style="background:#EECFE8aa;">🔌</div>
+    <div class="pc-meta">
+      <div class="pc-name">7. Adapter</div>
+      <div class="pc-tagline">Wrap external SDKs — translate a third-party API into your own interface so your domain never imports vendor code.</div>
+      <div class="pc-tags">
+        <span class="pc-tag" style="background:#EECFE8aa;color:var(--pink);border:1px solid #DDA8D0;">Structural</span>
+        <span class="pc-tag" style="background:#EEECFCaa;color:var(--purple);border:1px solid #CCC9F5;">DIP</span>
+        <span class="pc-tag" style="background:#FCEDECaa;color:var(--red);border:1px solid #F5C0BC;">🔴 Every infra test</span>
+      </div>
+    </div>
+  </div>
+  <div class="pc-body">
+    <div class="pc-grid">
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — vendor SDK in business logic</div>
+<pre class="cp"><span class="kw">public class</span> <span class="cn">PaymentService</span>
+<span class="tx">{</span>
+  <span class="kw">public async</span> <span class="cn">Task</span> <span class="fn">ChargeAsync</span><span class="tx">(</span><span class="cn">decimal</span> <span class="tx">amt)</span>
+  <span class="tx">{</span>
+    <span class="cm">// Stripe SDK directly in domain — DIP broken</span>
+<span class="hl">    <span class="kw">var</span> <span class="tx">stripe = </span><span class="kw">new</span> <span class="cn">StripeClient</span><span class="tx">(</span><span class="st">"sk_live_"</span><span class="tx">);</span></span>
+<span class="hl">    <span class="kw">await</span> <span class="tx">stripe.Charges.</span><span class="fn">CreateAsync</span><span class="tx">(</span></span>
+<span class="hl">      <span class="kw">new</span> <span class="cn">ChargeCreateOptions</span></span>
+<span class="hl">      <span class="tx">{ Amount=(</span><span class="cn">long</span><span class="tx">)(amt*</span><span class="nu">100</span><span class="tx">),Currency=</span><span class="st">"usd"</span><span class="tx"> });</span></span>
+    <span class="cm">// Stripe leaks into every layer</span>
+  <span class="tx">}</span>
+<span class="tx">}</span></pre>
+      </div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — Adapter wraps Stripe</div>
+<pre class="cp"><span class="cm">// domain interface — no vendor types</span>
+<span class="kw">public interface</span> <span class="cn">IPaymentGateway</span>
+<span class="tx">{</span>
+  <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">string</span><span class="tx">&gt; </span><span class="fn">ChargeAsync</span><span class="tx">(</span><span class="cn">decimal</span> <span class="tx">amount,</span>
+    <span class="cn">string</span> <span class="tx">currency);</span>
+<span class="tx">}</span>
+
+<span class="cm">// adapter — lives in infra layer only</span>
+<span class="gl"><span class="kw">public class</span> <span class="cn">StripePaymentAdapter</span></span>
+<span class="gl">  <span class="tx">:</span> <span class="cn">IPaymentGateway</span></span>
+<span class="gl"><span class="tx">{</span></span>
+<span class="gl">  <span class="kw">private readonly</span> <span class="cn">StripeClient</span> <span class="tx">_client;</span></span>
+<span class="gl">  <span class="kw">public</span> <span class="cn">StripePaymentAdapter</span><span class="tx">(</span></span>
+<span class="gl">    <span class="cn">IOptions</span><span class="tx">&lt;</span><span class="cn">StripeSettings</span><span class="tx">&gt; opts)</span></span>
+<span class="gl">    <span class="tx">=&gt; _client = </span><span class="kw">new</span> <span class="cn">StripeClient</span><span class="tx">(opts.Value.Key);</span></span>
+
+<span class="gl">  <span class="kw">public async</span> <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">string</span><span class="tx">&gt; </span><span class="fn">ChargeAsync</span><span class="tx">(</span></span>
+<span class="gl">    <span class="cn">decimal</span> <span class="tx">amount, </span><span class="cn">string</span> <span class="tx">currency)</span></span>
+<span class="gl">  <span class="tx">{</span></span>
+<span class="gl">    <span class="kw">var</span> <span class="tx">c = </span><span class="kw">await</span> <span class="tx">_client.Charges.</span><span class="fn">CreateAsync</span><span class="tx">(</span></span>
+<span class="gl">      <span class="kw">new</span> <span class="cn">ChargeCreateOptions</span></span>
+<span class="gl">      <span class="tx">{ Amount=(</span><span class="cn">long</span><span class="tx">)(amount*</span><span class="nu">100</span><span class="tx">), Currency=currency});</span></span>
+<span class="gl">    <span class="kw">return</span> <span class="tx">c.Id;  </span><span class="cm">// return domain type, not Stripe type</span></span>
+<span class="gl">  <span class="tx">}</span></span>
+<span class="gl"><span class="tx">}</span></span>
+<span class="cm">// swap to PayPal: class PayPalAdapter : IPaymentGateway</span></pre>
+      </div>
+    </div>
+    <div class="explain">
+      <div class="exp-title">🔍 Smell that triggers this pattern</div>
+      <ul class="exp-list">
+        <li>Search: <strong><code>using Stripe;</code> / <code>using Twilio;</code> / <code>using SendGrid;</code></strong> in domain/service files</li>
+        <li>Vendor SDK types (<strong><code>StripeClient</code>, <code>SmtpClient</code></strong>) appear in business logic</li>
+        <li>Swapping vendor requires <strong>editing business logic files</strong></li>
+      </ul>
+    </div>
+    <div class="di-strip"><span class="tx">builder.Services.</span><span class="fn">Configure</span><span class="tx">&lt;</span><span class="cn">StripeSettings</span><span class="tx">&gt;(cfg.</span><span class="fn">GetSection</span><span class="tx">(</span><span class="st">"Stripe"</span><span class="tx">));</span>
+<span class="tx">builder.Services.</span><span class="fn">AddScoped</span><span class="tx">&lt;</span><span class="cn">IPaymentGateway</span><span class="tx">, </span><span class="cn">StripePaymentAdapter</span><span class="tx">&gt;();</span>
+<span class="cm">// test: new Mock&lt;IPaymentGateway&gt;() — no Stripe account needed</span></div>
+    <div class="use-when">
+      <div class="uw-card" style="background:#E4F3EAaa;border:1px solid #A8DABB;">
+        <div class="uw-title" style="color:var(--green);">✓ Use when</div>
+        <ul class="uw-list">
+          <li class="yes">Any third-party SDK (Stripe, Twilio, SendGrid)</li>
+          <li class="yes">Infrastructure concerns (file, queue, cache)</li>
+          <li class="yes">Want to swap vendor without touching business code</li>
+        </ul>
+      </div>
+      <div class="uw-card" style="background:#FCEDECaa;border:1px solid #F5C0BC;">
+        <div class="uw-title" style="color:var(--red);">✗ Don't use when</div>
+        <ul class="uw-list">
+          <li class="no">SDK is already perfectly aligned with your interface</li>
+          <li class="no">Internal utility with no external dependency</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     8. MEDIATOR
+════════════════════════════════════════ -->
+<div class="pattern-card" id="p8">
+  <div class="pc-header">
+    <div class="pc-num" style="background:#E0C9F5aa;">📨</div>
+    <div class="pc-meta">
+      <div class="pc-name">8. Mediator (MediatR / CQRS)</div>
+      <div class="pc-tagline">Decouple sender from handler — controller sends a command/query, MediatR routes it to the correct handler.</div>
+      <div class="pc-tags">
+        <span class="pc-tag" style="background:#E0C9F5aa;color:#6B22B0;border:1px solid #CCA0F0;">Behavioural</span>
+        <span class="pc-tag" style="background:#EEECFCaa;color:var(--purple);border:1px solid #CCC9F5;">SRP</span>
+        <span class="pc-tag" style="background:#E5EEF9aa;color:var(--blue);border:1px solid #B5CDEF;">Lead Level</span>
+      </div>
+    </div>
+  </div>
+  <div class="pc-body">
+    <div class="pc-grid">
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — fat controller / fat service</div>
+<pre class="cp"><span class="kw">public class</span> <span class="cn">OrderController</span>
+<span class="tx">{</span>
+<span class="hl">  <span class="cm">// controller directly calls service = coupled</span></span>
+  <span class="kw">private readonly</span> <span class="cn">OrderService</span>    <span class="tx">_orders;</span>
+  <span class="kw">private readonly</span> <span class="cn">InventoryService</span> <span class="tx">_inv;</span>
+  <span class="kw">private readonly</span> <span class="cn">NotificationService</span> <span class="tx">_notif;</span>
+
+  <span class="kw">public</span> <span class="cn">IActionResult</span> <span class="fn">Place</span><span class="tx">(</span><span class="cn">Order</span> <span class="tx">o)</span>
+  <span class="tx">{</span>
+<span class="hl">    <span class="tx">_orders.</span><span class="fn">Save</span><span class="tx">(o);</span></span>
+<span class="hl">    <span class="tx">_inv.</span><span class="fn">Reserve</span><span class="tx">(o.Items);</span></span>
+<span class="hl">    <span class="tx">_notif.</span><span class="fn">Notify</span><span class="tx">(o.CustomerId);</span></span>
+    <span class="kw">return</span> <span class="fn">Ok</span><span class="tx">();</span>
+  <span class="tx">}</span>
+<span class="tx">}</span></pre>
+      </div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — MediatR CQRS</div>
+<pre class="cp"><span class="cm">// command (write operation)</span>
+<span class="gl"><span class="kw">public record</span> <span class="cn">PlaceOrderCommand</span><span class="tx">(</span><span class="cn">Order</span> <span class="tx">Order)</span></span>
+<span class="gl">  <span class="tx">:</span> <span class="cn">IRequest</span><span class="tx">&lt;</span><span class="cn">Guid</span><span class="tx">&gt;;</span></span>
+
+<span class="cm">// handler — single responsibility</span>
+<span class="gl"><span class="kw">public class</span> <span class="cn">PlaceOrderHandler</span></span>
+<span class="gl">  <span class="tx">:</span> <span class="cn">IRequestHandler</span><span class="tx">&lt;</span><span class="cn">PlaceOrderCommand</span><span class="tx">, </span><span class="cn">Guid</span><span class="tx">&gt;</span></span>
+<span class="gl"><span class="tx">{</span></span>
+<span class="gl">  <span class="kw">public async</span> <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">Guid</span><span class="tx">&gt; </span><span class="fn">Handle</span><span class="tx">(</span></span>
+<span class="gl">    <span class="cn">PlaceOrderCommand</span> <span class="tx">cmd,</span></span>
+<span class="gl">    <span class="cn">CancellationToken</span> <span class="tx">ct)</span></span>
+<span class="gl">  <span class="tx">{</span></span>
+<span class="gl">    <span class="kw">await</span> <span class="tx">_repo.</span><span class="fn">SaveAsync</span><span class="tx">(cmd.Order);</span></span>
+<span class="gl">    <span class="kw">await</span> <span class="tx">_mediator.</span><span class="fn">Publish</span><span class="tx">(</span></span>
+<span class="gl">      <span class="kw">new</span> <span class="cn">OrderPlacedEvent</span><span class="tx">(cmd.Order), ct);</span></span>
+<span class="gl">    <span class="kw">return</span> <span class="tx">cmd.Order.Id;</span></span>
+<span class="gl">  <span class="tx">}</span></span>
+<span class="gl"><span class="tx">}</span></span>
+
+<span class="cm">// query (read operation)</span>
+<span class="gl"><span class="kw">public record</span> <span class="cn">GetOrderQuery</span><span class="tx">(</span><span class="cn">Guid</span> <span class="tx">Id)</span></span>
+<span class="gl">  <span class="tx">:</span> <span class="cn">IRequest</span><span class="tx">&lt;</span><span class="cn">OrderDto</span><span class="tx">?&gt;;</span></span>
+
+<span class="cm">// controller — 1 dependency only</span>
+<span class="kw">public class</span> <span class="cn">OrderController</span>
+<span class="tx">{</span>
+  <span class="kw">private readonly</span> <span class="cn">IMediator</span> <span class="tx">_mediator;</span>
+  <span class="kw">public</span> <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">IActionResult</span><span class="tx">&gt; </span><span class="fn">Place</span><span class="tx">(</span><span class="cn">Order</span> <span class="tx">o)</span>
+    <span class="tx">=&gt; _mediator.</span><span class="fn">Send</span><span class="tx">(</span><span class="kw">new</span> <span class="cn">PlaceOrderCommand</span><span class="tx">(o));</span>
+<span class="tx">}</span></pre>
+      </div>
+    </div>
+    <div class="explain">
+      <div class="exp-title">🔍 Smell that triggers this pattern</div>
+      <ul class="exp-list">
+        <li>Controller constructor injects <strong>3+ service dependencies</strong></li>
+        <li>Service method is long and <strong>mixes read and write logic</strong></li>
+        <li>Cross-cutting concerns (logging, validation) applied <strong>inconsistently</strong> — use <code>IPipelineBehavior</code></li>
+        <li>Hard to test controller in isolation from services</li>
+      </ul>
+    </div>
+    <div class="di-strip"><span class="tx">builder.Services.</span><span class="fn">AddMediatR</span><span class="tx">(cfg =&gt;</span>
+  <span class="tx">cfg.</span><span class="fn">RegisterServicesFromAssembly</span><span class="tx">(</span><span class="kw">typeof</span><span class="tx">(</span><span class="cn">Program</span><span class="tx">).Assembly));</span>
+<span class="cm">// IPipelineBehavior for cross-cutting (logging, validation, timing):</span>
+<span class="tx">builder.Services.</span><span class="fn">AddTransient</span><span class="tx">(</span><span class="kw">typeof</span><span class="tx">(</span><span class="cn">IPipelineBehavior</span><span class="tx">&lt;,&gt;),</span>
+  <span class="kw">typeof</span><span class="tx">(</span><span class="cn">LoggingBehavior</span><span class="tx">&lt;,&gt;));</span></div>
+    <div class="use-when">
+      <div class="uw-card" style="background:#E4F3EAaa;border:1px solid #A8DABB;">
+        <div class="uw-title" style="color:var(--green);">✓ Use when</div>
+        <ul class="uw-list">
+          <li class="yes">Controllers have 3+ service dependencies</li>
+          <li class="yes">Want consistent cross-cutting via pipeline</li>
+          <li class="yes">CQRS separation of read/write paths</li>
+        </ul>
+      </div>
+      <div class="uw-card" style="background:#FCEDECaa;border:1px solid #F5C0BC;">
+        <div class="uw-title" style="color:var(--red);">✗ Don't use when</div>
+        <ul class="uw-list">
+          <li class="no">Simple CRUD with no business logic</li>
+          <li class="no">Small project where indirection adds friction</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SUMMARY TABLE -->
+<div class="sec-title">Summary — 8 patterns at a glance</div>
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px;">
+  <table class="sum-table">
+    <thead>
+      <tr><th>#</th><th>Pattern</th><th>Smell it fixes</th><th>Search for</th><th>SOLID link</th><th>Freq</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>1</strong></td><td>Strategy</td><td>if/switch on type string</td><td class="tcode">if (type == "X")</td><td><span class="badge" style="background:#EEECFCaa;color:var(--purple);">OCP</span></td><td>🔴 Very high</td></tr>
+      <tr><td><strong>2</strong></td><td>Repository</td><td>DB code in business logic</td><td class="tcode">new SqlConnection(</td><td><span class="badge" style="background:#EEECFCaa;color:var(--purple);">DIP</span></td><td>🔴 Every test</td></tr>
+      <tr><td><strong>3</strong></td><td>Factory</td><td>Creation scattered in callers</td><td class="tcode">new X() + switch + new Y()</td><td><span class="badge" style="background:#EEECFCaa;color:var(--purple);">OCP</span></td><td>🟡 High</td></tr>
+      <tr><td><strong>4</strong></td><td>Decorator</td><td>Cross-cutting in core classes</td><td class="tcode">_logger.Log inside repo.Save</td><td><span class="badge" style="background:#FCEDECaa;color:var(--red);">OCP SRP</span></td><td>🟡 High</td></tr>
+      <tr><td><strong>5</strong></td><td>State</td><td>switch(status) in many methods</td><td class="tcode">switch(order.Status) × N</td><td><span class="badge" style="background:#FCEDECaa;color:var(--red);">OCP</span></td><td>🟡 High</td></tr>
+      <tr><td><strong>6</strong></td><td>Observer</td><td>Side effects hardcoded inline</td><td class="tcode">_email + _inv + _analytics</td><td><span class="badge" style="background:#EEECFCaa;color:var(--purple);">SRP</span></td><td>🟡 High</td></tr>
+      <tr><td><strong>7</strong></td><td>Adapter</td><td>Vendor SDK in domain layer</td><td class="tcode">using Stripe / Twilio in service</td><td><span class="badge" style="background:#EEECFCaa;color:var(--purple);">DIP</span></td><td>🔴 Every infra fix</td></tr>
+      <tr><td><strong>8</strong></td><td>Mediator</td><td>Fat controller, 3+ deps</td><td class="tcode">ctor(ServiceA, ServiceB, ...)</td><td><span class="badge" style="background:#EEECFCaa;color:var(--purple);">SRP</span></td><td>🔵 Lead level</td></tr>
+    </tbody>
+  </table>
+</div>
+
+</div><!-- /wrap -->
+<footer>
+  <strong>GoF Design Patterns — C# Refactoring Reference</strong> &nbsp;·&nbsp;
+  Strategy · Repository · Factory · Decorator · State · Observer · Adapter · Mediator
+</footer>
+</body>
+</html>
