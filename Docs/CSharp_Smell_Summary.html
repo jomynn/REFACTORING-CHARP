@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C# Code Smell Summary — Before Refactoring</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700;800&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --ink:#0F0E1A; --bg:#F6F5FD; --surface:#FFF; --border:#E2DFF5;
+  --purple:#4C44B0; --teal:#0C6650; --amber:#A86510; --red:#B0302A;
+  --blue:#1558A0; --green:#1A7A45; --coral:#8B2910; --muted:#6B6887;
+  --mono:'JetBrains Mono',monospace; --sans:'Inter',system-ui,sans-serif;
+}
+html{font-family:var(--sans);background:var(--bg);color:var(--ink);}
+body{padding-bottom:60px;}
+
+/* HEADER */
+header{
+  background:var(--ink); color:#fff;
+  padding:28px 36px 24px; position:relative; overflow:hidden;
+}
+header::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(76,68,176,.5) 0%,transparent 60%);
+}
+.h-eyebrow{
+  font-family:var(--mono);font-size:10px;font-weight:600;
+  letter-spacing:.14em;color:#9B98CC;text-transform:uppercase;margin-bottom:8px;
+  position:relative;
+}
+header h1{font-size:clamp(20px,4vw,30px);font-weight:800;letter-spacing:-.02em;position:relative;}
+header h1 em{font-style:normal;color:#A09BF0;}
+header p{margin-top:8px;font-size:12.5px;color:#AAA8CC;line-height:1.6;position:relative;max-width:580px;}
+
+/* SEVERITY LEGEND */
+.sev-bar{
+  display:flex;gap:12px;flex-wrap:wrap;
+  padding:14px 36px;background:var(--surface);
+  border-bottom:1px solid var(--border);
+}
+.sev-pill{
+  display:flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:600;
+}
+.sev-dot{width:10px;height:10px;border-radius:50%;}
+
+/* WRAP */
+.wrap{max-width:1080px;margin:0 auto;padding:28px 20px 0;}
+
+/* SECTION */
+.sec-title{
+  font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);margin:28px 0 12px;
+  display:flex;align-items:center;gap:10px;
+}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* SMELL GRID */
+.smell-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:12px;}
+
+/* SMELL CARD */
+.smell-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;overflow:hidden;
+  transition:box-shadow .15s,transform .15s;
+}
+.smell-card:hover{box-shadow:0 6px 24px rgba(76,68,176,.1);transform:translateY(-2px);}
+
+.sc-head{
+  padding:12px 14px 10px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:flex-start;gap:10px;
+}
+.sc-icon{
+  width:34px;height:34px;border-radius:8px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+}
+.sc-meta{flex:1;}
+.sc-name{font-size:13px;font-weight:700;line-height:1.3;}
+.sc-principle{font-size:10px;font-weight:600;font-family:var(--mono);margin-top:3px;letter-spacing:.04em;}
+.sc-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;}
+.sc-tag{font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:10px;font-family:var(--mono);}
+
+/* SEV badge */
+.sev-critical{background:#FCECEA;color:var(--red);border:1px solid #F5C0BC;}
+.sev-high    {background:#FBF0E2;color:var(--amber);border:1px solid #EFD09A;}
+.sev-medium  {background:#E5EEF9;color:var(--blue);border:1px solid #B5CDEF;}
+
+.sc-body{padding:10px 14px 14px;}
+
+/* CODE SNIPPET */
+.code-block{
+  background:#1A1830;border-radius:8px;
+  padding:10px 12px;margin-bottom:10px;
+  font-family:var(--mono);font-size:10.5px;line-height:1.7;
+  overflow-x:auto;position:relative;
+}
+.code-block .cb-label{
+  font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:#6B68A0;margin-bottom:6px;font-family:var(--sans);
+}
+/* syntax */
+.kw{color:#C792EA;}  /* keyword */
+.cn{color:#F78C6C;}  /* class/type name */
+.st{color:#C3E88D;}  /* string */
+.cm{color:#546E7A;font-style:italic;}  /* comment */
+.nu{color:#F78C6C;}  /* number */
+.fn{color:#82AAFF;}  /* function */
+.tx{color:#EEFFFF;}  /* plain text */
+.hl{background:rgba(255,80,80,.12);display:block;margin:0 -12px;padding:0 12px;}  /* highlight bad line */
+
+/* WHAT TO LOOK FOR */
+.look-list{list-style:none;}
+.look-list li{
+  font-size:11.5px;color:var(--muted);padding:4px 0;
+  border-bottom:1px solid var(--border);
+  display:flex;gap:8px;align-items:flex-start;line-height:1.5;
+}
+.look-list li:last-child{border-bottom:none;}
+.look-list li::before{content:'⚠';font-size:10px;flex-shrink:0;margin-top:2px;}
+.look-list li strong{color:var(--ink);font-weight:600;}
+
+/* FIX TAG */
+.fix-tag{
+  display:inline-flex;align-items:center;gap:5px;
+  margin-top:8px;padding:4px 10px;border-radius:6px;
+  font-size:10.5px;font-weight:600;
+  background:#E4F3EA;color:var(--green);border:1px solid #A8DABB;
+}
+
+/* BIG TABLE */
+.ref-table{width:100%;border-collapse:collapse;font-size:12px;}
+.ref-table th{
+  padding:9px 12px;text-align:left;
+  background:var(--bg);border-bottom:2px solid var(--border);
+  font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);
+  position:sticky;top:0;z-index:1;
+}
+.ref-table td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+.ref-table tr:hover td{background:var(--bg);}
+.ref-table tr:last-child td{border-bottom:none;}
+.tcode{font-family:var(--mono);font-size:10.5px;color:var(--red);}
+.tfix {font-family:var(--mono);font-size:10.5px;color:var(--green);}
+.badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;font-family:var(--mono);}
+.b-s{background:#EEECFCaa;color:var(--purple);}
+.b-o{background:#E3F4EFaa;color:var(--teal);}
+.b-l{background:#FBF0E2aa;color:var(--amber);}
+.b-i{background:#FCEDECaa;color:var(--coral);}
+.b-d{background:#E5EEF9aa;color:var(--blue);}
+.b-g{background:#E4F3EAaa;color:var(--green);}
+.b-dry{background:#F0F0F0;color:#444;}
+
+/* icon bg colours */
+.ic-p{background:#EEEAFA;} .ic-t{background:#E0F3EE;} .ic-a{background:#FBF0E0;}
+.ic-r{background:#FCECEA;} .ic-b{background:#E3EEF8;} .ic-g{background:#E0F3E8;}
+
+footer{
+  margin-top:44px;background:var(--ink);
+  color:#AAA8CC;font-size:11px;text-align:center;padding:14px;
+}
+footer strong{color:#fff;}
+
+@media print{
+  .smell-card{break-inside:avoid;}
+  header{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="h-eyebrow">C# · Senior/Lead Refactoring · Before You Write One Line</div>
+  <h1>Code Smell Summary<br><em>Before Refactoring</em></h1>
+  <p>Every common smell you will find in a C# refactoring test — categorised by SOLID principle, with the bad code pattern, what to grep for, and the fix pattern name.</p>
+</header>
+
+<!-- SEVERITY LEGEND -->
+<div class="sev-bar">
+  <div class="sev-pill"><div class="sev-dot" style="background:var(--red)"></div>Critical — fix first</div>
+  <div class="sev-pill"><div class="sev-dot" style="background:var(--amber)"></div>High — fix in same session</div>
+  <div class="sev-pill"><div class="sev-dot" style="background:var(--blue)"></div>Medium — fix if time allows</div>
+</div>
+
+<div class="wrap">
+
+<!-- ─── S — SINGLE RESPONSIBILITY ─── -->
+<div class="sec-title">S — Single Responsibility Principle</div>
+<div class="smell-grid">
+
+  <!-- GOD CLASS -->
+  <div class="smell-card">
+    <div class="sc-head">
+      <div class="sc-icon ic-p">🏛</div>
+      <div class="sc-meta">
+        <div class="sc-name">God Class</div>
+        <div class="sc-principle" style="color:var(--purple)">SRP · Single Responsibility</div>
+        <div class="sc-tags">
+          <span class="sc-tag sev-critical">🔴 Critical</span>
+          <span class="sc-tag b-s">S</span>
+        </div>
+      </div>
+    </div>
+    <div class="sc-body">
+      <div class="code-block">
+        <div class="cb-label">Bad code</div>
+<span class="kw">public class</span> <span class="cn hl">UserManager</span> <span class="tx">{</span>
+  <span class="cm hl">// validate + save DB + send email + generate PDF</span>
+  <span class="kw">public void</span> <span class="fn">Process</span><span class="tx">(</span><span class="cn">User</span> <span class="tx">user) {</span>
+    <span class="cm">// 150+ lines of mixed concerns</span>
+  <span class="tx">}</span>
+<span class="tx">}</span>
+      </div>
+      <ul class="look-list">
+        <li><strong>File over 200 lines</strong> — near-certain SRP violation</li>
+        <li><strong>Class name</strong> ends in Manager, Handler, Helper, Utils</li>
+        <li>Constructor takes <strong>5+ dependencies</strong></li>
+        <li>Multiple <strong>private method groups</strong> with unrelated concerns</li>
+      </ul>
+      <div class="fix-tag">✓ Fix: Extract Class — Service / Repository / Mailer</div>
+    </div>
+  </div>
+
+  <!-- MIXED ABSTRACTION -->
+  <div class="smell-card">
+    <div class="sc-head">
+      <div class="sc-icon ic-p">🔀</div>
+      <div class="sc-meta">
+        <div class="sc-name">Mixed Abstraction Levels</div>
+        <div class="sc-principle" style="color:var(--purple)">SRP · Single Responsibility</div>
+        <div class="sc-tags">
+          <span class="sc-tag sev-critical">🔴 Critical</span>
+          <span class="sc-tag b-s">S</span>
+        </div>
+      </div>
+    </div>
+    <div class="sc-body">
+      <div class="code-block">
+        <div class="cb-label">Bad code</div>
+<span class="kw">public void</span> <span class="fn">PlaceOrder</span><span class="tx">(</span><span class="cn">Order</span> <span class="tx">order) {</span>
+  <span class="cm">// business rule</span>
+  <span class="kw">if</span> <span class="tx">(order.Total &lt;= </span><span class="nu">0</span><span class="tx">) </span><span class="kw">throw</span><span class="tx">...;</span>
+  <span class="hl">  <span class="cm">// raw SQL inside business logic</span></span>
+  <span class="hl">  <span class="cn">var</span> <span class="tx">conn = </span><span class="kw">new</span> <span class="cn">SqlConnection</span><span class="tx">(</span><span class="st">"..."</span><span class="tx">);</span></span>
+  <span class="hl">  <span class="tx">conn.</span><span class="fn">Execute</span><span class="tx">(</span><span class="st">"INSERT..."</span><span class="tx">);</span></span>
+  <span class="hl">  <span class="cm">// SMTP inside business logic</span></span>
+  <span class="hl">  <span class="kw">new</span> <span class="cn">SmtpClient</span><span class="tx">().</span><span class="fn">Send</span><span class="tx">(...);</span></span>
+<span class="tx">}</span>
+      </div>
+      <ul class="look-list">
+        <li>Business logic and <strong>SQL/HTTP/SMTP</strong> in same method</li>
+        <li>Method does "what to do" and "how to do it technically"</li>
+        <li>Function longer than <strong>20–30 lines</strong></li>
+      </ul>
+      <div class="fix-tag">✓ Fix: Extract Method + separate infra classes</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ─── O — OPEN/CLOSED ─── -->
+<div class="sec-title">O — Open / Closed Principle</div>
+<div class="smell-grid">
+
+  <!-- IF/ELSE CHAIN -->
+  <div class="smell-card">
+    <div class="sc-head">
+      <div class="sc-icon ic-t">🔀</div>
+      <div class="sc-meta">
+        <div class="sc-name">if / else Chain on Type</div>
+        <div class="sc-principle" style="color:var(--teal)">OCP · Open/Closed</div>
+        <div class="sc-tags">
+          <span class="sc-tag sev-critical">🔴 Critical</span>
+          <span class="sc-tag b-o">O</span>
+        </div>
+      </div>
+    </div>
+    <div class="sc-body">
+      <div class="code-block">
+        <div class="cb-label">Bad code</div>
+<span class="kw">public</span> <span class="cn">decimal</span> <span class="fn">GetDiscount</span><span class="tx">(</span><span class="cn">string</span> <span class="tx">type) {</span>
+  <span class="hl">  <span class="kw">if</span> <span class="tx">(type == </span><span class="st">"VIP"</span><span class="tx">)    </span><span class="kw">return</span> <span class="nu">0.30m</span><span class="tx">;</span></span>
+  <span class="hl">  <span class="kw">else if</span> <span class="tx">(type == </span><span class="st">"Member"</span><span class="tx">) </span><span class="kw">return</span> <span class="nu">0.15m</span><span class="tx">;</span></span>
+  <span class="hl">  <span class="kw">else if</span> <span class="tx">(type == </span><span class="st">"New"</span><span class="tx">)    </span><span class="kw">return</span> <span class="nu">0.05m</span><span class="tx">;</span></span>
+  <span class="cm">// add type = EDIT THIS FILE</span>
+  <span class="kw">return</span> <span class="nu">0m</span><span class="tx">;</span>
+<span class="tx">}</span>
+      </div>
+      <ul class="look-list">
+        <li>Search: <strong><code>if (x == "...")</code> or <code>switch(type)</code></strong> in service classes</li>
+        <li>Every new business type forces editing this method</li>
+        <li>Same switch duplicated in multiple methods</li>
+      </ul>
+      <div class="fix-tag">✓ Fix: Strategy pattern — one class per type</div>
+    </div>
+  </div>
+
+  <!-- SWITCH ON ACTION -->
+  <div class="smell-card">
+    <div class="sc-head">
+      <div class="sc-icon ic-t">🎛</div>
+      <div class="sc-meta">
+        <div class="sc-name">switch on Action / Status</div>
+        <div class="sc-principle" style="color:var(--teal)">OCP · Open/Closed</div>
+        <div class="sc-tags">
+          <span class="sc-tag sev-critical">🔴 Critical</span>
+          <span class="sc-tag b-o">O</span>
+        </div>
+      </div>
+    </div>
+    <div class="sc-body">
+      <div class="code-block">
+        <div class="cb-label">Bad code</div>
+<span class="kw">switch</span> <span class="tx">(order.Status) {</span>
+  <span class="hl">  <span class="kw">case</span> <span class="st">"Pending"</span><span class="tx">:   </span><span class="fn">ValidateOrder</span><span class="tx">(); </span><span class="kw">break</span><span class="tx">;</span></span>
+  <span class="hl">  <span class="kw">case</span> <span class="st">"Confirmed"</span><span class="tx">: </span><span class="fn">ChargePayment</span><span class="tx">(); </span><span class="kw">break</span><span class="tx">;</span></span>
+  <span class="hl">  <span class="kw">case</span> <span class="st">"Paid"</span><span class="tx">:      </span><span class="fn">ShipOrder</span><span class="tx">(); </span><span class="kw">break</span><span class="tx">;</span></span>
+  <span class="cm">// add status = edit THIS + other methods</span>
+<span class="tx">}</span>
+      </div>
+      <ul class="look-list">
+        <li><strong>Same switch</strong> in multiple methods (Process, GetLabel, GetIcon)</li>
+        <li>Adding new status → <strong>shotgun surgery</strong> across files</li>
+        <li>Status logic scattered, not encapsulated</li>
+      </ul>
+      <div class="fix-tag">✓ Fix: State pattern — each status owns its transitions</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ─── L — LISKOV ─── -->
+<div class="sec-title">L — Liskov Substitution Principle</div>
+<div class="smell-grid">
+
+  <!-- INSTANCEOF -->
+  <div class="smell-card">
+    <div class="sc-head">
+      <div class="sc-icon ic-a">🔍</div>
+      <div class="sc-meta">
+        <div class="sc-name">instanceof / is T Check</div>
+        <div class="sc-principle" style="color:var(--amber)">LSP · Liskov Substitution</div>
+        <div class="sc-tags">
+          <span class="sc-tag sev-critical">🔴 Critical</span>
+          <span class="sc-tag b-l">L</span>
+        </div>
+      </div>
+    </div>
+    <div class="sc-body">
+      <div class="code-block">
+        <div class="cb-label">Bad code</div>
+<span class="kw">public void</span> <span class="fn">Draw</span><span class="tx">(</span><span class="cn">Shape</span> <span class="tx">shape) {</span>
+  <span class="hl">  <span class="kw">if</span> <span class="tx">(shape </span><span class="kw">is</span> <span class="cn">Circle</span> <span class="tx">c)</span></span>
+  <span class="hl">    <span class="fn">DrawCircle</span><span class="tx">(c.Radius);</span></span>
+  <span class="hl">  <span class="kw">else if</span> <span class="tx">(shape </span><span class="kw">is</span> <span class="cn">Rectangle</span> <span class="tx">r)</span></span>
+  <span class="hl">    <span class="fn">DrawRect</span><span class="tx">(r.Width, r.Height);</span></span>
+  <span class="cm">// caller must know concrete type — LSP broken</span>
+<span class="tx">}</span>
+      </div>
+      <ul class="look-list">
+        <li>Search: <strong><code>is ConcreteType</code></strong> or <strong><code>as ConcreteType</code></strong> in non-factory code</li>
+        <li>Caller checks type before using object</li>
+        <li>Base type doesn't expose what callers need</li>
+      </ul>
+      <div class="fix-tag">✓ Fix: Add abstract method to base — shape.Draw()</div>
+    </div>
+  </div>
+
+  <!-- NOT IMPLEMENTED -->
+  <div class="smell-card">
+    <div class="sc-head">
+      <div class="sc-icon ic-a">💥</div>
+      <div class="sc-meta">
+        <div class="sc-name">NotImplementedException in Subclass</div>
+        <div class="sc-principle" style="color:var(--amber)">LSP · Liskov Substitution</div>
+        <div class="sc-tags">
+          <span class="sc-tag sev-critical">🔴 Critical</span>
+          <span class="sc-tag b-l">L</span>
+        </div>
+      </div>
+    </div>
+    <div class="sc-body">
+      <div class="code-block">
+        <div class="cb-label">Bad code</div>
+<span class="kw">public class</span> <span class="cn">ReadOnlyList</span> <span class="tx">:</span> <span class="cn">List</span> <span class="tx">{</span>
+  <span class="hl">  <span class="kw">public override void</span> <span class="fn">Add</span><span class="tx">(</span><span class="cn">T</span> <span class="tx">item)</span></span>
+  <span class="hl">    <span class="tx">=&gt; </span><span class="kw">throw new</span> <span class="cn">NotImplementedException</span><span class="tx">();</span></span>
+  <span class="hl">  <span class="kw">public override void</span> <span class="fn">Remove</span><span class="tx">(</span><span class="cn">T</span> <span class="tx">item)</span></span>
+  <span class="hl">    <span class="tx">=&gt; </span><span class="kw">throw new</span> <span class="cn">NotSupportedException</span><span class="tx">();</span></span>
+<span class="tx">}</span>
+      </div>
+      <ul class="look-list">
+        <li>Search: <strong><code>throw new NotImplementedException()</code></strong></li>
+        <li>Search: <strong><code>throw new NotSupportedException()</code></strong></li>
+        <li>Subclass breaks contract of the base class</li>
+        <li>Square / Rectangle anti-pattern</li>
+      </ul>
+      <div class="fix-tag">✓ Fix: Split into IReadable / IMutable interfaces</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ─── I — INTERFACE SEGREGATION ─── -->
+<div class="sec-title">I — Interface Segregation Principle</div>
+<div class="smell-grid">
+
+  <!-- FAT INTERFACE -->
+  <div class="smell-card">
+    <div class="sc-head">
+      <div class="sc-icon ic-r">🍔</div>
+      <div class="sc-meta">
+        <div class="sc-name">Fat Interface</div>
+        <div class="sc-principle" style="color:var(--coral)">ISP · Interface Segregation</div>
+        <div class="sc-tags">
+          <span class="sc-tag sev-high">🟡 High</span>
+          <span class="sc-tag b-i">I</span>
+        </div>
+      </div>
+    </div>
+    <div class="sc-body">
+      <div class="code-block">
+        <div class="cb-label">Bad code</div>
+<span class="kw">public interface</span> <span class="cn hl">IAnimalActions</span> <span class="tx">{</span>
+  <span class="kw">void</span> <span class="fn">Eat</span><span class="tx">(); </span><span class="kw">void</span> <span class="fn">Sleep</span><span class="tx">();</span>
+  <span class="hl">  <span class="kw">void</span> <span class="fn">Fly</span><span class="tx">();   </span><span class="cm">// fish can't fly</span></span>
+  <span class="hl">  <span class="kw">void</span> <span class="fn">Bark</span><span class="tx">();  </span><span class="cm">// cats don't bark</span></span>
+  <span class="hl">  <span class="kw">void</span> <span class="fn">Swim</span><span class="tx">();  </span><span class="cm">// dogs can't swim well</span></span>
+<span class="tx">}</span>
+      </div>
+      <ul class="look-list">
+        <li>Interface has <strong>more than 5–7 methods</strong></li>
+        <li>Classes implement the interface but leave <strong>empty or throw stubs</strong></li>
+        <li>Interface name is too generic: IService, IManager, IHelper</li>
+        <li>You mock half the interface just to test one feature</li>
+      </ul>
+      <div class="fix-tag">✓ Fix: Role interfaces — IFlyable, ISwimmable, IBarkable</div>
+    </div>
+  </div>
+
+  <!-- EMPTY STUBS -->
+  <div class="smell-card">
+    <div class="sc-head">
+      <div class="sc-icon ic-r">👻</div>
+      <div class="sc-meta">
+        <div class="sc-name">Empty Stub Methods</div>
+        <div class="sc-principle" style="color:var(--coral)">ISP · Interface Segregation</div>
+        <div class="sc-tags">
+          <span class="sc-tag sev-high">🟡 High</span>
+          <span class="sc-tag b-i">I</span>
+        </div>
+      </div>
+    </div>
+    <div class="sc-body">
+      <div class="code-block">
+        <div class="cb-label">Bad code</div>
+<span class="kw">public class</span> <span class="cn">RobotWorker</span> <span class="tx">:</span> <span class="cn">IWorker</span> <span class="tx">{</span>
+  <span class="kw">public void</span> <span class="fn">Work</span><span class="tx">()  { </span><span class="cm">/* ok */</span><span class="tx"> }</span>
+  <span class="hl">  <span class="kw">public void</span> <span class="fn">Eat</span><span class="tx">()   { } </span><span class="cm">// forced empty stub</span></span>
+  <span class="hl">  <span class="kw">public void</span> <span class="fn">Sleep</span><span class="tx">() { } </span><span class="cm">// forced empty stub</span></span>
+  <span class="hl">  <span class="kw">public void</span> <span class="fn">Bark</span><span class="tx">()</span></span>
+  <span class="hl">    <span class="tx">=&gt; </span><span class="kw">throw new</span> <span class="cn">NotImplementedException</span><span class="tx">();</span></span>
+<span class="tx">}</span>
+      </div>
+      <ul class="look-list">
+        <li>Search: <strong><code>{ }</code></strong> (empty body) on interface method implementations</li>
+        <li>Search: <strong><code>throw new NotImplementedException</code></strong></li>
+        <li>Class forced to implement methods it logically cannot do</li>
+      </ul>
+      <div class="fix-tag">✓ Fix: Split IWorkable / IFeedable / ISleepable</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ─── D — DEPENDENCY INVERSION ─── -->
+<div class="sec-title">D — Dependency Inversion Principle</div>
+<div class="smell-grid">
+
+  <!-- NEW INSIDE CONSTRUCTOR -->
+  <div class="smell-card">
+    <div class="sc-head">
+      <div class="sc-icon ic-b">🔗</div>
+      <div class="sc-meta">
+        <div class="sc-name">new ConcreteClass() in Constructor</div>
+        <div class="sc-principle" style="color:var(--blue)">DIP · Dependency Inversion</div>
+        <div class="sc-tags">
+          <span class="sc-tag sev-critical">🔴 Critical</span>
+          <span class="sc-tag b-d">D</span>
+        </div>
+      </div>
+    </div>
+    <div class="sc-body">
+      <div class="code-block">
+        <div class="cb-label">Bad code</div>
+<span class="kw">public class</span> <span class="cn">OrderService</span> <span class="tx">{</span>
+  <span class="hl">  <span class="kw">private readonly</span> <span class="cn">SqlOrderRepository</span> <span class="tx">_repo</span></span>
+  <span class="hl">    <span class="tx">= </span><span class="kw">new</span> <span class="cn">SqlOrderRepository</span><span class="tx">();</span></span>
+  <span class="hl">  <span class="kw">private readonly</span> <span class="cn">SmtpMailer</span> <span class="tx">_mailer</span></span>
+  <span class="hl">    <span class="tx">= </span><span class="kw">new</span> <span class="cn">SmtpMailer</span><span class="tx">();</span></span>
+  <span class="cm">// tightly coupled — cannot swap, test, or mock</span>
+<span class="tx">}</span>
+      </div>
+      <ul class="look-list">
+        <li>Search: <strong><code>new ConcreteService()</code></strong> inside any class field or constructor</li>
+        <li>Cannot unit test without spinning up real DB / SMTP</li>
+        <li>Swapping SQL → EF Core requires editing business logic</li>
+      </ul>
+      <div class="fix-tag">✓ Fix: Constructor injection — IOrderRepository, IMailer</div>
+    </div>
+  </div>
+
+  <!-- BUSINESS IMPORTS INFRA -->
+  <div class="smell-card">
+    <div class="sc-head">
+      <div class="sc-icon ic-b">📦</div>
+      <div class="sc-meta">
+        <div class="sc-name">Business Layer Imports Infrastructure</div>
+        <div class="sc-principle" style="color:var(--blue)">DIP · Dependency Inversion</div>
+        <div class="sc-tags">
+          <span class="sc-tag sev-critical">🔴 Critical</span>
+          <span class="sc-tag b-d">D</span>
+        </div>
+      </div>
+    </div>
+    <div class="sc-body">
+      <div class="code-block">
+        <div class="cb-label">Bad code</div>
+<span class="cm">// in Domain/OrderService.cs</span>
+<span class="hl"><span class="kw">using</span> <span class="cn">Dapper</span><span class="tx">;</span>              <span class="cm">// DB driver</span></span>
+<span class="hl"><span class="kw">using</span> <span class="cn">System.Net.Mail</span><span class="tx">;    </span><span class="cm">// SMTP</span></span>
+<span class="hl"><span class="kw">using</span> <span class="cn">Twilio.Rest.Api</span><span class="tx">;   </span><span class="cm">// SMS SDK</span></span>
+<span class="hl"><span class="kw">using</span> <span class="cn">Stripe</span><span class="tx">;             </span><span class="cm">// Payment SDK</span></span>
+<span class="cm">// domain layer knows too much about infra</span>
+      </div>
+      <ul class="look-list">
+        <li>Domain/service file has <strong>using statements for DB, SMTP, HTTP SDK</strong></li>
+        <li>Dependency arrow points outward (domain → infra) — wrong direction</li>
+        <li>Changing payment provider → editing business logic</li>
+      </ul>
+      <div class="fix-tag">✓ Fix: Ports & Adapters — interfaces in domain, SDKs in infra</div>
+    </div>
+  </div>
+
+  <!-- HARDCODED CREDENTIALS -->
+  <div class="smell-card">
+    <div class="sc-head">
+      <div class="sc-icon ic-b">🔑</div>
+      <div class="sc-meta">
+        <div class="sc-name">Hardcoded Credentials / Connection Strings</div>
+        <div class="sc-principle" style="color:var(--blue)">DIP + Security</div>
+        <div class="sc-tags">
+          <span class="sc-tag sev-critical">🔴 Critical</span>
+          <span class="sc-tag b-d">D</span>
+        </div>
+      </div>
+    </div>
+    <div class="sc-body">
+      <div class="code-block">
+        <div class="cb-label">Bad code</div>
+<span class="kw">var</span> <span class="tx">conn = </span><span class="kw">new</span> <span class="cn">SqlConnection</span><span class="tx">(</span>
+  <span class="hl">  <span class="st">"Server=prod;Password=P@ss1234"</span></span>
+<span class="tx">);</span>
+<span class="kw">var</span> <span class="tx">stripe = </span><span class="kw">new</span> <span class="cn">StripeClient</span><span class="tx">(</span>
+  <span class="hl">  <span class="st">"sk_live_REAL_KEY_HERE"</span></span>
+<span class="tx">);</span>
+      </div>
+      <ul class="look-list">
+        <li>Search: <strong><code>"Server=</code></strong>, <strong><code>Password=</code></strong>, <strong><code>sk_live_</code></strong>, <strong><code>ACxxxx</code></strong> (Twilio)</li>
+        <li>Credentials committed to source control — security risk</li>
+        <li>Cannot change env without recompiling</li>
+      </ul>
+      <div class="fix-tag">✓ Fix: IConfiguration + appsettings.json + IOptions&lt;T&gt;</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ─── GENERAL CODE SMELLS ─── -->
+<div class="sec-title">General Code Smells — apply to any principle</div>
+<div class="smell-grid">
+
+  <!-- MAGIC NUMBERS -->
+  <div class="smell-card">
+    <div class="sc-head">
+      <div class="sc-icon ic-a">🔢</div>
+      <div class="sc-meta">
+        <div class="sc-name">Magic Numbers &amp; Strings</div>
+        <div class="sc-principle" style="color:var(--muted)">Readability · DRY</div>
+        <div class="sc-tags">
+          <span class="sc-tag sev-high">🟡 High</span>
+          <span class="sc-tag b-dry">DRY</span>
+        </div>
+      </div>
+    </div>
+    <div class="sc-body">
+      <div class="code-block">
+        <div class="cb-label">Bad code</div>
+<span class="hl"><span class="kw">if</span> <span class="tx">(score &gt; </span><span class="nu">85</span><span class="tx">) grade = </span><span class="st">"A"</span><span class="tx">;</span></span>
+<span class="hl"><span class="kw">if</span> <span class="tx">(attempts &gt; </span><span class="nu">5</span><span class="tx">) </span><span class="fn">LockAccount</span><span class="tx">();</span></span>
+<span class="hl"><span class="tx">expiry = DateTime.Now.</span><span class="fn">AddSeconds</span><span class="tx">(</span><span class="nu">86400</span><span class="tx">);</span></span>
+<span class="hl"><span class="kw">if</span> <span class="tx">(role == </span><span class="st">"admin"</span><span class="tx">) </span><span class="fn">Grant</span><span class="tx">();</span></span>
+<span class="cm">// what does 85, 5, 86400 mean?</span>
+      </div>
+      <ul class="look-list">
+        <li>Any <strong>literal number</strong> that isn't 0 or 1 in logic</li>
+        <li><strong>Literal strings</strong> used for roles, status, types</li>
+        <li>Same number repeated in 3+ places</li>
+      </ul>
+      <div class="fix-tag">✓ Fix: private const int GradeAThreshold = 85;</div>
+    </div>
+  </div>
+
+  <!-- LONG METHOD / ARROW CODE -->
+  <div class="smell-card">
+    <div class="sc-head">
+      <div class="sc-icon ic-r">⬇️</div>
+      <div class="sc-meta">
+        <div class="sc-name">Long Method / Arrow Code</div>
+        <div class="sc-principle" style="color:var(--muted)">Readability · SRP</div>
+        <div class="sc-tags">
+          <span class="sc-tag sev-high">🟡 High</span>
+          <span class="sc-tag b-s">S</span>
+        </div>
+      </div>
+    </div>
+    <div class="sc-body">
+      <div class="code-block">
+        <div class="cb-label">Bad code — 5 levels deep</div>
+<span class="kw">if</span> <span class="tx">(user != </span><span class="kw">null</span><span class="tx">) {</span>
+  <span class="kw">  if</span> <span class="tx">(user.IsActive) {</span>
+  <span class="hl">    <span class="kw">    if</span> <span class="tx">(user.Age &gt;= </span><span class="nu">18</span><span class="tx">) {</span></span>
+  <span class="hl">      <span class="kw">      if</span> <span class="tx">(request != </span><span class="kw">null</span><span class="tx">) {</span></span>
+  <span class="hl">        <span class="cm">        // actual logic buried here</span></span>
+  <span class="tx">      }}</span>
+  <span class="tx">  }}</span>
+<span class="tx">}</span>
+      </div>
+      <ul class="look-list">
+        <li>Method over <strong>20–30 lines</strong></li>
+        <li>Nesting <strong>deeper than 3 levels</strong> (arrow / pyramid of doom)</li>
+        <li>Multiple <strong>return paths</strong> buried deep in nesting</li>
+        <li>Hard to write a single unit test that covers the method</li>
+      </ul>
+      <div class="fix-tag">✓ Fix: Guard clauses + Extract Method</div>
+    </div>
+  </div>
+
+  <!-- POOR NAMING -->
+  <div class="smell-card">
+    <div class="sc-head">
+      <div class="sc-icon ic-a">🏷</div>
+      <div class="sc-meta">
+        <div class="sc-name">Poor Naming</div>
+        <div class="sc-principle" style="color:var(--muted)">Readability</div>
+        <div class="sc-tags">
+          <span class="sc-tag sev-high">🟡 High</span>
+          <span class="sc-tag b-dry">General</span>
+        </div>
+      </div>
+    </div>
+    <div class="sc-body">
+      <div class="code-block">
+        <div class="cb-label">Bad code</div>
+<span class="kw">public</span> <span class="cn">decimal</span> <span class="fn hl">Do</span><span class="tx">(</span><span class="cn hl">decimal</span> <span class="tx hl">x</span><span class="tx">, </span><span class="cn hl">int</span> <span class="tx hl">n</span><span class="tx">) {</span>
+  <span class="hl">  <span class="cn">var</span> <span class="tx">r = </span><span class="nu">0m</span><span class="tx">;</span>   <span class="cm">// what is r?</span></span>
+  <span class="hl">  <span class="cn">var</span> <span class="tx">tmp = x * </span><span class="nu">0.07m</span><span class="tx">; </span><span class="cm">// what is tmp?</span></span>
+  <span class="kw">  return</span> <span class="tx">r + tmp;</span>
+<span class="tx">}</span>
+      </div>
+      <ul class="look-list">
+        <li>Single-letter params: <strong>x, n, d, r, tmp</strong></li>
+        <li>Method name describes HOW not WHAT: <strong>Do(), Process(), Handle()</strong></li>
+        <li>Boolean params: <strong>Process(user, true, false, null)</strong></li>
+        <li>You need a comment to explain what a variable does</li>
+      </ul>
+      <div class="fix-tag">✓ Fix: Rename — CalculateFinalPrice(orderTotal, years)</div>
+    </div>
+  </div>
+
+  <!-- SQL INJECTION -->
+  <div class="smell-card">
+    <div class="sc-head">
+      <div class="sc-icon ic-r">💉</div>
+      <div class="sc-meta">
+        <div class="sc-name">SQL Injection Risk</div>
+        <div class="sc-principle" style="color:var(--muted)">Security + DIP</div>
+        <div class="sc-tags">
+          <span class="sc-tag sev-critical">🔴 Critical</span>
+          <span class="sc-tag b-dry">Security</span>
+        </div>
+      </div>
+    </div>
+    <div class="sc-body">
+      <div class="code-block">
+        <div class="cb-label">Bad code</div>
+<span class="tx">conn.</span><span class="fn">Execute</span><span class="tx">(</span>
+  <span class="hl">  <span class="st">$"INSERT INTO Users VALUES ('{name}', '{email}')"</span></span>
+<span class="tx">);</span>
+<span class="cm">// string interpolation in SQL = injection risk</span>
+      </div>
+      <ul class="look-list">
+        <li>Search: <strong><code>$"SELECT ... {variable}"</code></strong> — interpolation in SQL</li>
+        <li>Search: <strong><code>"... + variable + ..."</code></strong> — concatenation in SQL</li>
+        <li>No <strong><code>@ParameterName</code></strong> or <strong><code>SqlParameter</code></strong> usage</li>
+      </ul>
+      <div class="fix-tag">✓ Fix: Parameterized query — new { Name = name }</div>
+    </div>
+  </div>
+
+  <!-- DEAD CODE -->
+  <div class="smell-card">
+    <div class="sc-head">
+      <div class="sc-icon ic-g">💀</div>
+      <div class="sc-meta">
+        <div class="sc-name">Dead / Commented-out Code</div>
+        <div class="sc-principle" style="color:var(--muted)">YAGNI · Readability</div>
+        <div class="sc-tags">
+          <span class="sc-tag sev-medium">🔵 Medium</span>
+          <span class="sc-tag b-dry">YAGNI</span>
+        </div>
+      </div>
+    </div>
+    <div class="sc-body">
+      <div class="code-block">
+        <div class="cb-label">Bad code</div>
+<span class="hl"><span class="cm">// var old = GetOldUser(id);</span></span>
+<span class="hl"><span class="cm">// if (old != null) return old.Map();</span></span>
+<span class="kw">public void</span> <span class="fn">OldMethod</span><span class="tx">() { </span><span class="cm">/* never called */</span><span class="tx"> }</span>
+<span class="cm">// TODO: fix this later (from 2021)</span>
+      </div>
+      <ul class="look-list">
+        <li>Blocks of <strong>commented-out code</strong> — use git history instead</li>
+        <li><strong>Unused methods, fields, or classes</strong> — IDE warnings</li>
+        <li><strong>TODO comments</strong> older than current sprint</li>
+      </ul>
+      <div class="fix-tag">✓ Fix: Delete it — git is your backup</div>
+    </div>
+  </div>
+
+  <!-- CONSOLE WRITELINE -->
+  <div class="smell-card">
+    <div class="sc-head">
+      <div class="sc-icon ic-g">📢</div>
+      <div class="sc-meta">
+        <div class="sc-name">Console.WriteLine as Logging</div>
+        <div class="sc-principle" style="color:var(--muted)">DIP · Observability</div>
+        <div class="sc-tags">
+          <span class="sc-tag sev-high">🟡 High</span>
+          <span class="sc-tag b-d">D</span>
+        </div>
+      </div>
+    </div>
+    <div class="sc-body">
+      <div class="code-block">
+        <div class="cb-label">Bad code</div>
+<span class="hl"><span class="cn">Console</span><span class="tx">.</span><span class="fn">WriteLine</span><span class="tx">(</span><span class="st">"Processing: "</span><span class="tx"> + id);</span></span>
+<span class="hl"><span class="cn">Console</span><span class="tx">.</span><span class="fn">WriteLine</span><span class="tx">(</span><span class="st">"ERROR: "</span><span class="tx"> + ex.Message);</span></span>
+<span class="cm">// not routable, no severity, no sink, no structure</span>
+      </div>
+      <ul class="look-list">
+        <li>Search: <strong><code>Console.WriteLine</code></strong> anywhere in service classes</li>
+        <li>String concatenation in log messages — no named properties</li>
+        <li>No log levels — everything treated as equal severity</li>
+      </ul>
+      <div class="fix-tag">✓ Fix: ILogger&lt;T&gt; injection + _logger.LogInformation("{Id}", id)</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ─── QUICK REFERENCE TABLE ─── -->
+<div class="sec-title">Quick reference — grep these patterns to find smells fast</div>
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+  <table class="ref-table">
+    <thead>
+      <tr>
+        <th>Smell</th>
+        <th>Search / grep for</th>
+        <th>Principle</th>
+        <th>Fix pattern</th>
+        <th>Sev</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>God class</td><td class="tcode">class *Manager / *Handler / *Helper</td><td><span class="badge b-s">S</span></td><td class="tfix">Extract Class</td><td>🔴</td></tr>
+      <tr><td>Mixed concerns</td><td class="tcode">new SqlConnection inside service</td><td><span class="badge b-s">S</span></td><td class="tfix">Extract Method + layer split</td><td>🔴</td></tr>
+      <tr><td>Type switch</td><td class="tcode">if (type == "X") / switch(type)</td><td><span class="badge b-o">O</span></td><td class="tfix">Strategy pattern</td><td>🔴</td></tr>
+      <tr><td>Status switch</td><td class="tcode">switch(order.Status)</td><td><span class="badge b-o">O</span></td><td class="tfix">State pattern</td><td>🔴</td></tr>
+      <tr><td>Type check</td><td class="tcode">is ConcreteType / as ConcreteType</td><td><span class="badge b-l">L</span></td><td class="tfix">Abstract method on base</td><td>🔴</td></tr>
+      <tr><td>Broken subtype</td><td class="tcode">throw new NotImplementedException()</td><td><span class="badge b-l">L</span></td><td class="tfix">Split interfaces</td><td>🔴</td></tr>
+      <tr><td>Fat interface</td><td class="tcode">interface with 7+ methods</td><td><span class="badge b-i">I</span></td><td class="tfix">Role interfaces</td><td>🟡</td></tr>
+      <tr><td>Empty stubs</td><td class="tcode">public void X() { }</td><td><span class="badge b-i">I</span></td><td class="tfix">Smaller interfaces</td><td>🟡</td></tr>
+      <tr><td>Hard dependency</td><td class="tcode">= new ConcreteClass() in field</td><td><span class="badge b-d">D</span></td><td class="tfix">Constructor injection</td><td>🔴</td></tr>
+      <tr><td>Infra import</td><td class="tcode">using Dapper / Stripe / Twilio in domain</td><td><span class="badge b-d">D</span></td><td class="tfix">Ports &amp; Adapters</td><td>🔴</td></tr>
+      <tr><td>Hardcoded creds</td><td class="tcode">"Password=..." / "sk_live_"</td><td><span class="badge b-d">D</span></td><td class="tfix">IOptions&lt;T&gt; + appsettings</td><td>🔴</td></tr>
+      <tr><td>Magic numbers</td><td class="tcode">0.15m / 86400 / 1000 in logic</td><td><span class="badge b-dry">DRY</span></td><td class="tfix">Named constants</td><td>🟡</td></tr>
+      <tr><td>Arrow code</td><td class="tcode">if { if { if { — 3+ levels</td><td><span class="badge b-s">S</span></td><td class="tfix">Guard clauses</td><td>🟡</td></tr>
+      <tr><td>Poor naming</td><td class="tcode">void Do(decimal x, int n)</td><td><span class="badge b-dry">General</span></td><td class="tfix">Rename method + params</td><td>🟡</td></tr>
+      <tr><td>SQL injection</td><td class="tcode">$"SELECT ... {variable}"</td><td><span class="badge b-dry">Security</span></td><td class="tfix">Parameterized query</td><td>🔴</td></tr>
+      <tr><td>Console log</td><td class="tcode">Console.WriteLine(</td><td><span class="badge b-d">D</span></td><td class="tfix">ILogger&lt;T&gt; injection</td><td>🟡</td></tr>
+      <tr><td>Dead code</td><td class="tcode">// old code / unused methods</td><td><span class="badge b-dry">YAGNI</span></td><td class="tfix">Delete — use git</td><td>🔵</td></tr>
+      <tr><td>Async blocking</td><td class="tcode">.Result / .Wait()</td><td><span class="badge b-dry">Async</span></td><td class="tfix">await all the way up</td><td>🔴</td></tr>
+    </tbody>
+  </table>
+</div>
+
+</div><!-- /wrap -->
+
+<footer>
+  <strong>C# Code Smell Summary — Before Refactoring</strong> &nbsp;·&nbsp;
+  S=Single Responsibility · O=Open/Closed · L=Liskov · I=Interface Segregation · D=Dependency Inversion
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C# Refactoring — 6 Smells Fixed Reference</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700;800&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --ink:#0F0E1A; --bg:#F6F5FD; --surface:#FFF; --border:#E2DFF5;
+  --purple:#4C44B0; --teal:#0C6650; --amber:#A86510; --red:#B0302A;
+  --blue:#1558A0; --green:#1A7A45; --muted:#6B6887;
+  --mono:'JetBrains Mono',monospace; --sans:'Inter',system-ui,sans-serif;
+}
+html{font-family:var(--sans);background:var(--bg);color:var(--ink);}
+body{padding-bottom:60px;}
+
+/* HEADER */
+header{background:var(--ink);color:#fff;padding:28px 36px 24px;position:relative;overflow:hidden;}
+header::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(76,68,176,.5) 0%,transparent 60%);}
+.h-eye{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.14em;color:#9B98CC;text-transform:uppercase;margin-bottom:8px;position:relative;}
+header h1{font-size:clamp(20px,4vw,28px);font-weight:800;letter-spacing:-.02em;position:relative;}
+header h1 em{font-style:normal;color:#A09BF0;}
+header p{margin-top:8px;font-size:12.5px;color:#AAA8CC;line-height:1.6;position:relative;max-width:640px;}
+
+/* INDEX BAR */
+.index-bar{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:14px 36px;display:flex;gap:8px;flex-wrap:wrap;
+}
+.idx-btn{
+  padding:5px 14px;border-radius:20px;font-size:11.5px;font-weight:600;
+  border:1px solid var(--border);background:transparent;cursor:pointer;
+  color:var(--muted);transition:all .15s;text-decoration:none;
+}
+.idx-btn:hover{background:var(--bg);}
+.idx-btn.c1{border-color:#F5C0BC;color:var(--red);}
+.idx-btn.c2{border-color:#CCC9F5;color:var(--purple);}
+.idx-btn.c3{border-color:#B5CDEF;color:var(--blue);}
+.idx-btn.c4{border-color:#EFD09A;color:var(--amber);}
+.idx-btn.c5{border-color:#A8DABB;color:var(--green);}
+.idx-btn.c6{border-color:#A8D9CA;color:var(--teal);}
+
+/* WRAP */
+.wrap{max-width:1040px;margin:0 auto;padding:28px 20px 0;}
+
+/* SMELL SECTION */
+.smell-section{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;overflow:hidden;margin-bottom:20px;
+}
+.ss-header{
+  padding:16px 20px;border-bottom:1px solid var(--border);
+  display:flex;align-items:flex-start;gap:14px;
+}
+.ss-num{
+  width:38px;height:38px;border-radius:10px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:16px;font-weight:700;color:#fff;
+}
+.ss-meta{flex:1;}
+.ss-title{font-size:15px;font-weight:800;letter-spacing:-.01em;}
+.ss-sub{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5;}
+.ss-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.ss-tag{font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;font-family:var(--mono);}
+
+/* BODY GRID */
+.ss-body{padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media(max-width:700px){.ss-body{grid-template-columns:1fr;}}
+.ss-full{padding:20px;grid-column:1/-1;}
+
+/* CODE BLOCK */
+.cb{background:#1A1830;border-radius:10px;overflow:hidden;}
+.cb-label{
+  padding:8px 14px;font-size:10px;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;
+  font-family:var(--sans);border-bottom:1px solid rgba(255,255,255,.06);
+}
+.cb-bad  .cb-label{background:rgba(176,48,42,.25);color:#F5A0A0;}
+.cb-good .cb-label{background:rgba(26,122,69,.25);color:#8FDAAA;}
+.cb-pre{
+  padding:12px 14px;font-family:var(--mono);font-size:10.5px;
+  line-height:1.7;color:#EEFFFF;white-space:pre;overflow-x:auto;
+  margin:0;
+}
+/* syntax */
+.kw{color:#C792EA;} .cn{color:#FFCB6B;} .st{color:#C3E88D;}
+.cm{color:#546E7A;font-style:italic;} .nu{color:#F78C6C;}
+.fn{color:#82AAFF;} .tx{color:#EEFFFF;}
+.hl{background:rgba(255,80,80,.15);display:block;margin:0 -14px;padding:0 14px;}
+.gl{background:rgba(26,180,90,.12);display:block;margin:0 -14px;padding:0 14px;}
+
+/* EXPLANATION */
+.explain{background:var(--bg);border-radius:10px;padding:14px 16px;}
+.exp-title{font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px;display:flex;align-items:center;gap:7px;}
+.exp-list{list-style:none;}
+.exp-list li{
+  font-size:11.5px;color:var(--muted);padding:5px 0;
+  border-bottom:1px solid var(--border);
+  display:flex;gap:8px;align-items:flex-start;line-height:1.5;
+}
+.exp-list li:last-child{border-bottom:none;}
+.exp-list li::before{content:'→';color:var(--border);flex-shrink:0;margin-top:1px;}
+.exp-list li strong{color:var(--ink);font-weight:600;}
+
+/* PRINCIPLE BOX */
+.principle-box{
+  border-radius:10px;padding:12px 14px;border-left:3px solid;
+  margin-top:14px;font-size:12px;line-height:1.6;
+}
+.principle-box .pb-label{font-size:10px;font-weight:700;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;}
+
+/* DIVIDER */
+.divider{height:1px;background:var(--border);margin:16px 0;}
+
+/* SUMMARY TABLE */
+.sum-table{width:100%;border-collapse:collapse;font-size:12px;}
+.sum-table th{
+  padding:9px 14px;text-align:left;background:var(--bg);
+  border-bottom:2px solid var(--border);
+  font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);
+}
+.sum-table td{padding:9px 14px;border-bottom:1px solid var(--border);vertical-align:top;}
+.sum-table tr:hover td{background:var(--bg);}
+.sum-table tr:last-child td{border-bottom:none;}
+.tcode{font-family:var(--mono);font-size:10.5px;color:var(--red);}
+.tfix{font-family:var(--mono);font-size:10.5px;color:var(--green);}
+.tsec{font-size:11px;}
+.badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;font-family:var(--mono);}
+.bs{background:#EEECFCaa;color:var(--purple);}
+.bd{background:#E5EEF9aa;color:var(--blue);}
+.ba{background:#FBF0E2aa;color:var(--amber);}
+.bg2{background:#E4F3EAaa;color:var(--green);}
+.br{background:#FCEDECaa;color:var(--red);}
+
+/* SEC TITLE */
+.sec-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:28px 0 12px;display:flex;align-items:center;gap:10px;}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* PATTERN MAP */
+.pmap{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;}
+.pm-pill{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;border-left:3px solid;}
+.pm-num{font-family:var(--mono);font-size:10px;font-weight:700;margin-bottom:4px;}
+.pm-name{font-size:12px;font-weight:700;color:var(--ink);}
+.pm-pattern{font-size:11px;color:var(--muted);margin-top:2px;}
+
+footer{margin-top:44px;background:var(--ink);color:#AAA8CC;font-size:11px;text-align:center;padding:14px;}
+footer strong{color:#fff;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="h-eye">C# Refactoring · Senior/Lead · Complete Fix Reference</div>
+  <h1>6 Smells Fixed —<br><em>Document &amp; Reference</em></h1>
+  <p>Full before/after C# code, explanation, principle mapping, and fix pattern for every smell in the comment block. Use this as your study reference before the test.</p>
+</header>
+
+<!-- INDEX -->
+<div class="index-bar">
+  <a class="idx-btn c1" href="#fix1">1. SQL Injection</a>
+  <a class="idx-btn c2" href="#fix2">2. Tight Coupling</a>
+  <a class="idx-btn c3" href="#fix3">3. SRP Violation</a>
+  <a class="idx-btn c4" href="#fix4">4. Magic Literals</a>
+  <a class="idx-btn c5" href="#fix5">5. Duplicated DB Block</a>
+  <a class="idx-btn c6" href="#fix6">6. Untestable Design</a>
+</div>
+
+<div class="wrap">
+
+<!-- THE COMMENT BLOCK -->
+<div class="sec-title">The comment block you're studying</div>
+<div class="cb cb-good" style="margin-bottom:20px;">
+  <div class="cb-label">Target comment — what your refactored code should prove</div>
+  <pre class="cb-pre"><span class="cm">// Smells fixed:</span>
+<span class="cm">//   1. SQL injection        → parameterized queries</span>
+<span class="cm">//   2. Tight coupling       → IInvoiceRepository + IEmailSender injected</span>
+<span class="cm">//   3. SRP violation        → validation / pricing / persistence / notification split</span>
+<span class="cm">//   4. Magic literals       → constants + configuration</span>
+<span class="cm">//   5. Duplicated DB block  → single SaveInvoice() call</span>
+<span class="cm">//   6. Untestable design    → all I/O behind interfaces</span></pre>
+</div>
+
+<!-- ─── FIX 1: SQL INJECTION ─── -->
+<div class="smell-section" id="fix1">
+  <div class="ss-header">
+    <div class="ss-num" style="background:var(--red);">1</div>
+    <div class="ss-meta">
+      <div class="ss-title">SQL Injection → Parameterized Queries</div>
+      <div class="ss-sub">String interpolation in SQL = critical security vulnerability. Any user input passed directly into a query string can delete your database.</div>
+      <div class="ss-tags">
+        <span class="ss-tag" style="background:#FCEDECaa;color:var(--red);border:1px solid #F5C0BC;">🔴 Critical — Security</span>
+        <span class="ss-tag" style="background:#E5EEF9aa;color:var(--blue);border:1px solid #B5CDEF;">DIP adjacent</span>
+      </div>
+    </div>
+  </div>
+  <div class="ss-body">
+    <div>
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — SQL injection risk</div>
+        <pre class="cb-pre"><span class="kw">public void</span> <span class="fn">SaveInvoice</span><span class="tx">(</span><span class="cn">Invoice</span> <span class="tx">inv)</span>
+<span class="tx">{</span>
+  <span class="kw">var</span> <span class="tx">conn = </span><span class="kw">new</span> <span class="cn">SqlConnection</span><span class="tx">(</span>
+    <span class="st">"Server=localhost;Password=1234"</span><span class="tx">);</span>
+  <span class="tx">conn.</span><span class="fn">Open</span><span class="tx">();</span>
+
+  <span class="cm">// ⚠ string interpolation = injection</span>
+<span class="hl">  <span class="kw">var</span> <span class="tx">sql = </span><span class="st">$"INSERT INTO Invoices "</span></span>
+<span class="hl">          <span class="st">+ $"VALUES ('{inv.Customer}',"</span></span>
+<span class="hl">          <span class="st">+ $"'{inv.Amount}', '{inv.Date}')"</span><span class="tx">;</span></span>
+  <span class="tx">conn.</span><span class="fn">Execute</span><span class="tx">(sql);</span>
+<span class="tx">}</span></pre>
+      </div>
+    </div>
+    <div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — parameterized query</div>
+        <pre class="cb-pre"><span class="kw">public async</span> <span class="cn">Task</span> <span class="fn">SaveInvoiceAsync</span><span class="tx">(</span><span class="cn">Invoice</span> <span class="tx">inv)</span>
+<span class="tx">{</span>
+  <span class="cm">// connection string from IConfiguration</span>
+  <span class="kw">await using var</span> <span class="tx">conn = </span><span class="kw">new</span> <span class="cn">SqlConnection</span><span class="tx">(</span>
+    <span class="tx">_config.</span><span class="fn">GetConnectionString</span><span class="tx">(</span><span class="st">"Default"</span><span class="tx">));</span>
+
+  <span class="cm">// ✓ named parameters — injection impossible</span>
+<span class="gl">  <span class="kw">const string</span> <span class="tx">sql =</span></span>
+<span class="gl">    <span class="st">"INSERT INTO Invoices "</span></span>
+<span class="gl">    <span class="st">"(Customer, Amount, Date) "</span></span>
+<span class="gl">    <span class="st">"VALUES (@Customer, @Amount, @Date)"</span><span class="tx">;</span></span>
+
+<span class="gl">  <span class="kw">await</span> <span class="tx">conn.</span><span class="fn">ExecuteAsync</span><span class="tx">(sql, </span><span class="kw">new</span></span>
+<span class="gl">  <span class="tx">{</span></span>
+<span class="gl">    <span class="tx">inv.Customer,</span></span>
+<span class="gl">    <span class="tx">inv.Amount,</span></span>
+<span class="gl">    <span class="tx">inv.Date</span></span>
+<span class="gl">  <span class="tx">});</span></span>
+<span class="tx">}</span></pre>
+      </div>
+    </div>
+  </div>
+  <div class="ss-full" style="padding-top:0;">
+    <div class="explain">
+      <div class="exp-title">🔍 How to find it</div>
+      <ul class="exp-list">
+        <li>Search: <strong><code>$"... {variable} ..."</code></strong> inside any SQL string</li>
+        <li>Search: <strong><code>"SELECT" + variable</code></strong> or <strong><code>"INSERT" + variable</code></strong></li>
+        <li>Any <code>Execute()</code> / <code>Query()</code> call with a <strong>built string, not a const</strong></li>
+        <li>No <strong><code>@ParameterName</code></strong> in the SQL and no anonymous object passed as second arg</li>
+      </ul>
+    </div>
+    <div class="principle-box" style="background:#FCEDECaa;border-color:var(--red);margin-top:12px;">
+      <div class="pb-label" style="color:var(--red);">Rule</div>
+      SQL strings must be <strong>const string</strong> — never built with interpolation or concatenation. User input goes in the parameter object only. Dapper's <code>@Name</code> syntax handles escaping automatically.
+    </div>
+  </div>
+</div>
+
+<!-- ─── FIX 2: TIGHT COUPLING ─── -->
+<div class="smell-section" id="fix2">
+  <div class="ss-header">
+    <div class="ss-num" style="background:var(--purple);">2</div>
+    <div class="ss-meta">
+      <div class="ss-title">Tight Coupling → IInvoiceRepository + IEmailSender Injected</div>
+      <div class="ss-sub">Business logic directly instantiates SqlConnection, SmtpClient — impossible to test, impossible to swap. DIP broken.</div>
+      <div class="ss-tags">
+        <span class="ss-tag" style="background:#EEECFCaa;color:var(--purple);border:1px solid #CCC9F5;">🔴 Critical — DIP</span>
+        <span class="ss-tag" style="background:#EEECFCaa;color:var(--purple);border:1px solid #CCC9F5;">SRP</span>
+      </div>
+    </div>
+  </div>
+  <div class="ss-body">
+    <div>
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — hardcoded dependencies</div>
+        <pre class="cb-pre"><span class="kw">public class</span> <span class="cn">InvoiceService</span>
+<span class="tx">{</span>
+  <span class="cm">// ⚠ new = tightly coupled</span>
+<span class="hl">  <span class="kw">private readonly</span> <span class="cn">SqlConnection</span> <span class="tx">_db</span></span>
+<span class="hl">    <span class="tx">= </span><span class="kw">new</span> <span class="cn">SqlConnection</span><span class="tx">(</span><span class="st">"..."</span><span class="tx">);</span></span>
+<span class="hl">  <span class="kw">private readonly</span> <span class="cn">SmtpClient</span> <span class="tx">_smtp</span></span>
+<span class="hl">    <span class="tx">= </span><span class="kw">new</span> <span class="cn">SmtpClient</span><span class="tx">(</span><span class="st">"smtp.host"</span><span class="tx">);</span></span>
+
+  <span class="cm">// cannot mock, cannot test in isolation</span>
+<span class="tx">}</span></pre>
+      </div>
+    </div>
+    <div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — injected interfaces</div>
+        <pre class="cb-pre"><span class="cm">// define ports in domain layer</span>
+<span class="kw">public interface</span> <span class="cn">IInvoiceRepository</span>
+<span class="tx">{</span>
+  <span class="cn">Task</span> <span class="fn">SaveAsync</span><span class="tx">(</span><span class="cn">Invoice</span> <span class="tx">invoice);</span>
+  <span class="cn">Task</span><span class="tx">&lt;</span><span class="cn">Invoice</span><span class="tx">?&gt; </span><span class="fn">GetByIdAsync</span><span class="tx">(</span><span class="cn">int</span> <span class="tx">id);</span>
+<span class="tx">}</span>
+<span class="kw">public interface</span> <span class="cn">IEmailSender</span>
+<span class="tx">{</span>
+  <span class="cn">Task</span> <span class="fn">SendAsync</span><span class="tx">(</span><span class="cn">string</span> <span class="tx">to,</span>
+    <span class="cn">string</span> <span class="tx">subject, </span><span class="cn">string</span> <span class="tx">body);</span>
+<span class="tx">}</span>
+
+<span class="cm">// ✓ depends on abstractions only</span>
+<span class="kw">public class</span> <span class="cn">InvoiceService</span>
+<span class="tx">{</span>
+  <span class="kw">private readonly</span> <span class="cn">IInvoiceRepository</span> <span class="tx">_repo;</span>
+  <span class="kw">private readonly</span> <span class="cn">IEmailSender</span> <span class="tx">_email;</span>
+
+<span class="gl">  <span class="kw">public</span> <span class="cn">InvoiceService</span><span class="tx">(</span></span>
+<span class="gl">    <span class="cn">IInvoiceRepository</span> <span class="tx">repo,</span></span>
+<span class="gl">    <span class="cn">IEmailSender</span> <span class="tx">email)</span></span>
+<span class="gl">  <span class="tx">{ _repo = repo; _email = email; }</span></span>
+<span class="tx">}</span>
+<span class="cm">// Program.cs:</span>
+<span class="cm">// .AddScoped&lt;IInvoiceRepository,</span>
+<span class="cm">//            SqlInvoiceRepository&gt;()</span>
+<span class="cm">// .AddScoped&lt;IEmailSender, SmtpEmailSender&gt;()</span></pre>
+      </div>
+    </div>
+  </div>
+  <div class="ss-full" style="padding-top:0;">
+    <div class="explain">
+      <div class="exp-title">🔍 How to find it</div>
+      <ul class="exp-list">
+        <li>Search: <strong><code>= new ConcreteClass()</code></strong> as a field initializer</li>
+        <li>Search: <strong><code>new SqlConnection</code> / <code>new SmtpClient</code> / <code>new HttpClient</code></strong> inside class bodies</li>
+        <li>Constructor has <strong>zero parameters</strong> but class does I/O</li>
+        <li>Cannot write a unit test without <strong>real infrastructure running</strong></li>
+      </ul>
+    </div>
+    <div class="principle-box" style="background:#EEECFCaa;border-color:var(--purple);margin-top:12px;">
+      <div class="pb-label" style="color:var(--purple);">Principle: DIP — Dependency Inversion</div>
+      High-level modules (InvoiceService) must not depend on low-level modules (SqlConnection). Both depend on <strong>abstractions</strong> (IInvoiceRepository). Interfaces live in the domain layer. Concrete classes live in the infrastructure layer.
+    </div>
+  </div>
+</div>
+
+<!-- ─── FIX 3: SRP VIOLATION ─── -->
+<div class="smell-section" id="fix3">
+  <div class="ss-header">
+    <div class="ss-num" style="background:var(--blue);">3</div>
+    <div class="ss-meta">
+      <div class="ss-title">SRP Violation → Validation / Pricing / Persistence / Notification Split</div>
+      <div class="ss-sub">One class doing four jobs. Every change to pricing, DB schema, email template, or validation rules touches the same file.</div>
+      <div class="ss-tags">
+        <span class="ss-tag" style="background:#E5EEF9aa;color:var(--blue);border:1px solid #B5CDEF;">🔴 Critical — SRP</span>
+        <span class="ss-tag" style="background:#E5EEF9aa;color:var(--blue);border:1px solid #B5CDEF;">Extract Class</span>
+      </div>
+    </div>
+  </div>
+  <div class="ss-body">
+    <div>
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — one method, four concerns</div>
+        <pre class="cb-pre"><span class="kw">public class</span> <span class="cn">InvoiceManager</span>  <span class="cm">// ⚠</span>
+<span class="tx">{</span>
+  <span class="kw">public void</span> <span class="fn">Process</span><span class="tx">(</span><span class="cn">Invoice</span> <span class="tx">inv)</span>
+  <span class="tx">{</span>
+    <span class="cm">// 1. validate</span>
+<span class="hl">    <span class="kw">if</span> <span class="tx">(inv.Amount &lt;= </span><span class="nu">0</span><span class="tx">)</span></span>
+<span class="hl">      <span class="kw">throw new</span> <span class="cn">Exception</span><span class="tx">(</span><span class="st">"bad"</span><span class="tx">);</span></span>
+
+    <span class="cm">// 2. calculate price</span>
+<span class="hl">    <span class="tx">inv.Tax = inv.Amount * </span><span class="nu">0.07m</span><span class="tx">;</span></span>
+<span class="hl">    <span class="tx">inv.Total = inv.Amount + inv.Tax;</span></span>
+
+    <span class="cm">// 3. save to DB</span>
+<span class="hl">    <span class="kw">var</span> <span class="tx">conn = </span><span class="kw">new</span> <span class="cn">SqlConnection</span><span class="tx">(...);</span></span>
+<span class="hl">    <span class="tx">conn.</span><span class="fn">Execute</span><span class="tx">(</span><span class="st">$"INSERT..."</span><span class="tx">);</span></span>
+
+    <span class="cm">// 4. send email</span>
+<span class="hl">    <span class="kw">new</span> <span class="cn">SmtpClient</span><span class="tx">().</span><span class="fn">Send</span><span class="tx">(...);</span></span>
+  <span class="tx">}</span>
+<span class="tx">}</span></pre>
+      </div>
+    </div>
+    <div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — each class has one job</div>
+        <pre class="cb-pre"><span class="cm">// 1. validation only</span>
+<span class="kw">public class</span> <span class="cn">InvoiceValidator</span>
+<span class="tx">{</span>
+  <span class="kw">public void</span> <span class="fn">Validate</span><span class="tx">(</span><span class="cn">Invoice</span> <span class="tx">inv)</span>
+  <span class="tx">{</span>
+    <span class="kw">if</span> <span class="tx">(inv.Amount &lt;= </span><span class="nu">0</span><span class="tx">)</span>
+      <span class="kw">throw new</span> <span class="cn">ArgumentException</span><span class="tx">(</span>
+        <span class="st">"Amount must be positive"</span><span class="tx">);</span>
+  <span class="tx">}</span>
+<span class="tx">}</span>
+<span class="cm">// 2. pricing only</span>
+<span class="kw">public class</span> <span class="cn">InvoicePricer</span>
+<span class="tx">{</span>
+  <span class="kw">public void</span> <span class="fn">ApplyTax</span><span class="tx">(</span><span class="cn">Invoice</span> <span class="tx">inv)</span>
+  <span class="tx">{</span>
+    <span class="tx">inv.Tax   = inv.Amount * TaxRate;</span>
+    <span class="tx">inv.Total = inv.Amount + inv.Tax;</span>
+  <span class="tx">}</span>
+<span class="tx">}</span>
+<span class="cm">// 3. persistence → IInvoiceRepository</span>
+<span class="cm">// 4. notification → IEmailSender</span>
+
+<span class="cm">// orchestrator — no logic, just coordination</span>
+<span class="kw">public class</span> <span class="cn">InvoiceService</span>
+<span class="tx">{</span>
+  <span class="kw">public async</span> <span class="cn">Task</span> <span class="fn">ProcessAsync</span><span class="tx">(</span><span class="cn">Invoice</span> <span class="tx">inv)</span>
+  <span class="tx">{</span>
+    <span class="tx">_validator.</span><span class="fn">Validate</span><span class="tx">(inv);</span>
+    <span class="tx">_pricer.</span><span class="fn">ApplyTax</span><span class="tx">(inv);</span>
+    <span class="kw">await</span> <span class="tx">_repo.</span><span class="fn">SaveAsync</span><span class="tx">(inv);</span>
+    <span class="kw">await</span> <span class="tx">_email.</span><span class="fn">SendAsync</span><span class="tx">(...);</span>
+  <span class="tx">}</span>
+<span class="tx">}</span></pre>
+      </div>
+    </div>
+  </div>
+  <div class="ss-full" style="padding-top:0;">
+    <div class="explain">
+      <div class="exp-title">🔍 How to find it</div>
+      <ul class="exp-list">
+        <li>Ask: <strong>"who would ask me to change this class?"</strong> — PM (logic), DBA (SQL), designer (email) = 3 owners = SRP broken</li>
+        <li>Method contains <strong>comment blocks labelling different concerns</strong> (// validate, // save, // email)</li>
+        <li>Class name ends in <strong>Manager, Processor, Handler</strong></li>
+        <li>File is <strong>over 150 lines</strong> or method over 30 lines</li>
+      </ul>
+    </div>
+    <div class="principle-box" style="background:#E5EEF9aa;border-color:var(--blue);margin-top:12px;">
+      <div class="pb-label" style="color:var(--blue);">Principle: SRP — Single Responsibility</div>
+      A class has <strong>one reason to change</strong>. Split by concern: Validator changes when rules change. Pricer changes when tax rates change. Repository changes when DB schema changes. Mailer changes when email template changes. Each class has exactly one owner.
+    </div>
+  </div>
+</div>
+
+<!-- ─── FIX 4: MAGIC LITERALS ─── -->
+<div class="smell-section" id="fix4">
+  <div class="ss-header">
+    <div class="ss-num" style="background:var(--amber);">4</div>
+    <div class="ss-meta">
+      <div class="ss-title">Magic Literals → Constants + Configuration</div>
+      <div class="ss-sub">0.07m, 30, "no-reply@app.com" scattered inline — no one knows what they mean. Change requires grep across the whole codebase.</div>
+      <div class="ss-tags">
+        <span class="ss-tag" style="background:#FBF0E2aa;color:var(--amber);border:1px solid #EFD09A;">🟡 High — Readability</span>
+        <span class="ss-tag" style="background:#FBF0E2aa;color:var(--amber);border:1px solid #EFD09A;">DRY</span>
+      </div>
+    </div>
+  </div>
+  <div class="ss-body">
+    <div>
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — magic everywhere</div>
+        <pre class="cb-pre"><span class="kw">public void</span> <span class="fn">Process</span><span class="tx">(</span><span class="cn">Invoice</span> <span class="tx">inv)</span>
+<span class="tx">{</span>
+<span class="hl">  <span class="tx">inv.Tax = inv.Amount * </span><span class="nu">0.07m</span><span class="tx">;</span>   <span class="cm">// what rate?</span></span>
+<span class="hl">  <span class="tx">inv.DueDate = inv.Date.</span><span class="fn">AddDays</span><span class="tx">(</span><span class="nu">30</span><span class="tx">);  </span><span class="cm">// why 30?</span></span>
+<span class="hl">  <span class="kw">if</span> <span class="tx">(inv.Amount &gt; </span><span class="nu">10000</span><span class="tx">)</span>            <span class="cm">// what is 10000?</span></span>
+<span class="hl">    <span class="tx">_email.</span><span class="fn">Send</span><span class="tx">(</span><span class="st">"boss@co.com"</span><span class="tx">, ...</span><span class="tx">);</span></span>
+<span class="hl">  <span class="tx">_email.</span><span class="fn">From</span><span class="tx"> = </span><span class="st">"no-reply@app.com"</span><span class="tx">;</span></span>
+<span class="tx">}</span></pre>
+      </div>
+    </div>
+    <div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — named constants + config</div>
+        <pre class="cb-pre"><span class="cm">// constants — single source of truth</span>
+<span class="kw">private const decimal</span> <span class="tx">TaxRate          = </span><span class="nu">0.07m</span><span class="tx">;</span>
+<span class="kw">private const int</span>     <span class="tx">PaymentTermsDays = </span><span class="nu">30</span><span class="tx">;</span>
+<span class="kw">private const decimal</span> <span class="tx">LargeInvoiceLimit= </span><span class="nu">10_000m</span><span class="tx">;</span>
+
+<span class="cm">// config-driven — from appsettings.json</span>
+<span class="kw">public class</span> <span class="cn">InvoiceSettings</span>
+<span class="tx">{</span>
+  <span class="kw">public string</span> <span class="tx">FromEmail    { </span><span class="kw">get</span><span class="tx">; </span><span class="kw">set</span><span class="tx">; } = </span><span class="st">""</span><span class="tx">;</span>
+  <span class="kw">public string</span> <span class="tx">AlertEmail   { </span><span class="kw">get</span><span class="tx">; </span><span class="kw">set</span><span class="tx">; } = </span><span class="st">""</span><span class="tx">;</span>
+<span class="tx">}</span>
+
+<span class="kw">public void</span> <span class="fn">Process</span><span class="tx">(</span><span class="cn">Invoice</span> <span class="tx">inv)</span>
+<span class="tx">{</span>
+<span class="gl">  <span class="tx">inv.Tax     = inv.Amount * TaxRate;</span></span>
+<span class="gl">  <span class="tx">inv.DueDate = inv.Date.</span><span class="fn">AddDays</span><span class="tx">(PaymentTermsDays);</span></span>
+<span class="gl">  <span class="kw">if</span> <span class="tx">(inv.Amount &gt; LargeInvoiceLimit)</span></span>
+<span class="gl">    <span class="tx">_email.</span><span class="fn">Send</span><span class="tx">(_settings.AlertEmail, ...);</span></span>
+<span class="tx">}</span>
+<span class="cm">// appsettings.json:</span>
+<span class="cm">// "Invoice": { "FromEmail":"no-reply@co.com",</span>
+<span class="cm">//              "AlertEmail":"boss@co.com" }</span></pre>
+      </div>
+    </div>
+  </div>
+  <div class="ss-full" style="padding-top:0;">
+    <div class="explain">
+      <div class="exp-title">🔍 How to find it</div>
+      <ul class="exp-list">
+        <li>Any <strong>decimal/int literal that is not 0 or 1</strong> inside business logic</li>
+        <li><strong>Literal strings</strong> for emails, roles, status values, queue names</li>
+        <li><strong>Same number</strong> appears in 2+ places</li>
+        <li>You need a <strong>comment to explain what a number means</strong></li>
+      </ul>
+    </div>
+    <div class="principle-box" style="background:#FBF0E2aa;border-color:var(--amber);margin-top:12px;">
+      <div class="pb-label" style="color:var(--amber);">Rule: Two categories</div>
+      <strong>Business constants</strong> (TaxRate, PaymentTermsDays) → <code>private const</code> in the class. <strong>Environment config</strong> (email addresses, URLs, keys) → <code>appsettings.json</code> bound via <code>IOptions&lt;InvoiceSettings&gt;</code>. Never hardcode environment-specific values.
+    </div>
+  </div>
+</div>
+
+<!-- ─── FIX 5: DUPLICATED DB BLOCK ─── -->
+<div class="smell-section" id="fix5">
+  <div class="ss-header">
+    <div class="ss-num" style="background:var(--green);">5</div>
+    <div class="ss-meta">
+      <div class="ss-title">Duplicated DB Block → Single SaveInvoice() Call</div>
+      <div class="ss-sub">The same connection + query block copy-pasted in multiple methods. DRY broken — one bug means multiple fixes.</div>
+      <div class="ss-tags">
+        <span class="ss-tag" style="background:#E4F3EAaa;color:var(--green);border:1px solid #A8DABB;">🟡 High — DRY</span>
+        <span class="ss-tag" style="background:#E4F3EAaa;color:var(--green);border:1px solid #A8DABB;">Extract Method</span>
+      </div>
+    </div>
+  </div>
+  <div class="ss-body">
+    <div>
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — duplicated connection block</div>
+        <pre class="cb-pre"><span class="kw">public void</span> <span class="fn">CreateInvoice</span><span class="tx">(</span><span class="cn">Invoice</span> <span class="tx">inv)</span>
+<span class="tx">{</span>
+<span class="hl">  <span class="kw">var</span> <span class="tx">conn = </span><span class="kw">new</span> <span class="cn">SqlConnection</span><span class="tx">(</span><span class="st">"..."</span><span class="tx">);</span></span>
+<span class="hl">  <span class="tx">conn.</span><span class="fn">Open</span><span class="tx">();</span></span>
+<span class="hl">  <span class="tx">conn.</span><span class="fn">Execute</span><span class="tx">(</span><span class="st">"INSERT..."</span><span class="tx">, inv);</span></span>
+<span class="hl">  <span class="tx">conn.</span><span class="fn">Close</span><span class="tx">();</span>  <span class="cm">// duplicated block #1</span></span>
+<span class="tx">}</span>
+
+<span class="kw">public void</span> <span class="fn">UpdateInvoice</span><span class="tx">(</span><span class="cn">Invoice</span> <span class="tx">inv)</span>
+<span class="tx">{</span>
+<span class="hl">  <span class="kw">var</span> <span class="tx">conn = </span><span class="kw">new</span> <span class="cn">SqlConnection</span><span class="tx">(</span><span class="st">"..."</span><span class="tx">);</span></span>
+<span class="hl">  <span class="tx">conn.</span><span class="fn">Open</span><span class="tx">();</span></span>
+<span class="hl">  <span class="tx">conn.</span><span class="fn">Execute</span><span class="tx">(</span><span class="st">"UPDATE..."</span><span class="tx">, inv);</span></span>
+<span class="hl">  <span class="tx">conn.</span><span class="fn">Close</span><span class="tx">();  </span><span class="cm">// duplicated block #2</span></span>
+<span class="tx">}</span>
+<span class="cm">// add method = copy-paste block again</span></pre>
+      </div>
+    </div>
+    <div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — single repository method</div>
+        <pre class="cb-pre"><span class="cm">// all DB logic in one place</span>
+<span class="kw">public class</span> <span class="cn">SqlInvoiceRepository</span>
+  <span class="tx">:</span> <span class="cn">IInvoiceRepository</span>
+<span class="tx">{</span>
+  <span class="kw">private readonly string</span> <span class="tx">_conn;</span>
+  <span class="kw">public</span> <span class="cn">SqlInvoiceRepository</span><span class="tx">(</span><span class="cn">IConfiguration</span> <span class="tx">cfg)</span>
+    <span class="tx">=&gt; _conn = cfg.</span><span class="fn">GetConnectionString</span><span class="tx">(</span><span class="st">"Default"</span><span class="tx">)!;</span>
+
+<span class="gl">  <span class="kw">public async</span> <span class="cn">Task</span> <span class="fn">SaveAsync</span><span class="tx">(</span><span class="cn">Invoice</span> <span class="tx">inv)</span></span>
+<span class="gl">  <span class="tx">{</span></span>
+<span class="gl">    <span class="kw">await using var</span> <span class="tx">db = </span><span class="kw">new</span> <span class="cn">SqlConnection</span><span class="tx">(_conn);</span></span>
+<span class="gl">    <span class="kw">const string</span> <span class="tx">sql =</span></span>
+<span class="gl">      <span class="st">"INSERT INTO Invoices (Customer,Amount,Date)"</span></span>
+<span class="gl">      <span class="st">"VALUES (@Customer,@Amount,@Date)"</span><span class="tx">;</span></span>
+<span class="gl">    <span class="kw">await</span> <span class="tx">db.</span><span class="fn">ExecuteAsync</span><span class="tx">(sql, </span><span class="kw">new</span></span>
+<span class="gl">      <span class="tx">{ inv.Customer, inv.Amount, inv.Date });</span></span>
+<span class="gl">  <span class="tx">}</span></span>
+<span class="tx">}</span>
+
+<span class="cm">// caller — one line, no duplication</span>
+<span class="kw">await</span> <span class="tx">_repo.</span><span class="fn">SaveAsync</span><span class="tx">(invoice);</span></pre>
+      </div>
+    </div>
+  </div>
+  <div class="ss-full" style="padding-top:0;">
+    <div class="explain">
+      <div class="exp-title">🔍 How to find it</div>
+      <ul class="exp-list">
+        <li>Search: <strong><code>new SqlConnection(</code></strong> — if it appears more than once, extract it</li>
+        <li><strong>Copy-pasted blocks</strong> with only the SQL string changed</li>
+        <li>Same <code>conn.Open() / conn.Execute() / conn.Close()</code> pattern repeated</li>
+        <li>Bug fix in one block that <strong>also exists in another block</strong></li>
+      </ul>
+    </div>
+    <div class="principle-box" style="background:#E4F3EAaa;border-color:var(--green);margin-top:12px;">
+      <div class="pb-label" style="color:var(--green);">Principle: DRY — Don't Repeat Yourself</div>
+      Every piece of knowledge has a <strong>single authoritative representation</strong>. The DB connection setup is knowledge — it belongs in one place (<code>SqlInvoiceRepository</code>). Callers only call <code>SaveAsync()</code>. If the schema changes, one method changes.
+    </div>
+  </div>
+</div>
+
+<!-- ─── FIX 6: UNTESTABLE DESIGN ─── -->
+<div class="smell-section" id="fix6">
+  <div class="ss-header">
+    <div class="ss-num" style="background:var(--teal);">6</div>
+    <div class="ss-meta">
+      <div class="ss-title">Untestable Design → All I/O Behind Interfaces</div>
+      <div class="ss-sub">Code that requires a real database, SMTP server, or Stripe account to run any test is untestable in isolation. Every dependency must be mockable.</div>
+      <div class="ss-tags">
+        <span class="ss-tag" style="background:#E3F4EFaa;color:var(--teal);border:1px solid #A8D9CA;">🔴 Critical — Testability</span>
+        <span class="ss-tag" style="background:#E3F4EFaa;color:var(--teal);border:1px solid #A8D9CA;">DIP</span>
+      </div>
+    </div>
+  </div>
+  <div class="ss-body">
+    <div>
+      <div class="cb cb-bad">
+        <div class="cb-label">Bad — impossible to unit test</div>
+        <pre class="cb-pre"><span class="kw">public class</span> <span class="cn">InvoiceService</span>
+<span class="tx">{</span>
+  <span class="kw">public void</span> <span class="fn">Process</span><span class="tx">(</span><span class="cn">Invoice</span> <span class="tx">inv)</span>
+  <span class="tx">{</span>
+    <span class="cm">// needs real DB</span>
+<span class="hl">    <span class="kw">var</span> <span class="tx">conn = </span><span class="kw">new</span> <span class="cn">SqlConnection</span><span class="tx">(...);</span></span>
+<span class="hl">    <span class="tx">conn.</span><span class="fn">Execute</span><span class="tx">(...</span><span class="tx">);</span></span>
+    <span class="cm">// needs real SMTP</span>
+<span class="hl">    <span class="kw">new</span> <span class="cn">SmtpClient</span><span class="tx">().</span><span class="fn">Send</span><span class="tx">(...);</span></span>
+    <span class="cm">// needs real Stripe</span>
+<span class="hl">    <span class="kw">new</span> <span class="cn">StripeClient</span><span class="tx">(</span><span class="st">"sk_live"</span><span class="tx">).</span><span class="fn">Charge</span><span class="tx">();</span></span>
+  <span class="tx">}</span>
+<span class="tx">}</span>
+
+<span class="cm">// test is impossible without infra:</span>
+<span class="cm">// [Test] void Process_ValidInvoice_SavesAndSends()</span>
+<span class="cm">// { ??? } // need real DB running</span></pre>
+      </div>
+    </div>
+    <div>
+      <div class="cb cb-good">
+        <div class="cb-label">Fixed — fully testable with Moq</div>
+        <pre class="cb-pre"><span class="cm">// all I/O behind interfaces</span>
+<span class="kw">public class</span> <span class="cn">InvoiceService</span>
+<span class="tx">{</span>
+  <span class="kw">private readonly</span> <span class="cn">IInvoiceRepository</span> <span class="tx">_repo;</span>
+  <span class="kw">private readonly</span> <span class="cn">IEmailSender</span>       <span class="tx">_email;</span>
+  <span class="kw">public</span> <span class="cn">InvoiceService</span><span class="tx">(</span><span class="cn">IInvoiceRepository</span> <span class="tx">r,</span>
+    <span class="cn">IEmailSender</span> <span class="tx">e) { _repo=r; _email=e; }</span>
+
+  <span class="kw">public async</span> <span class="cn">Task</span> <span class="fn">ProcessAsync</span><span class="tx">(</span><span class="cn">Invoice</span> <span class="tx">inv)</span>
+  <span class="tx">{</span>
+    <span class="kw">await</span> <span class="tx">_repo.</span><span class="fn">SaveAsync</span><span class="tx">(inv);</span>
+    <span class="kw">await</span> <span class="tx">_email.</span><span class="fn">SendAsync</span><span class="tx">(inv.Email,</span>
+      <span class="st">"Invoice"</span><span class="tx">, </span><span class="st">$"Amount: {inv.Total:C}"</span><span class="tx">);</span>
+  <span class="tx">}</span>
+<span class="tx">}</span>
+
+<span class="cm">// ✓ full unit test — no infra needed</span>
+<span class="tx">[</span><span class="cn">Test</span><span class="tx">]</span>
+<span class="kw">public async</span> <span class="cn">Task</span>
+  <span class="fn">Process_ValidInvoice_SavesAndSendsEmail</span><span class="tx">()</span>
+<span class="tx">{</span>
+  <span class="cm">// Arrange</span>
+  <span class="kw">var</span> <span class="tx">repo  = </span><span class="kw">new</span> <span class="cn">Mock</span><span class="tx">&lt;</span><span class="cn">IInvoiceRepository</span><span class="tx">&gt;();</span>
+  <span class="kw">var</span> <span class="tx">email = </span><span class="kw">new</span> <span class="cn">Mock</span><span class="tx">&lt;</span><span class="cn">IEmailSender</span><span class="tx">&gt;();</span>
+  <span class="kw">var</span> <span class="tx">svc   = </span><span class="kw">new</span> <span class="cn">InvoiceService</span><span class="tx">(</span>
+    <span class="tx">repo.Object, email.Object);</span>
+  <span class="kw">var</span> <span class="tx">inv   = </span><span class="kw">new</span> <span class="cn">Invoice</span><span class="tx"> { Amount=100, ... };</span>
+
+  <span class="cm">// Act</span>
+  <span class="kw">await</span> <span class="tx">svc.</span><span class="fn">ProcessAsync</span><span class="tx">(inv);</span>
+
+  <span class="cm">// Assert</span>
+  <span class="tx">repo.</span><span class="fn">Verify</span><span class="tx">(r => r.</span><span class="fn">SaveAsync</span><span class="tx">(inv),</span>
+    <span class="cn">Times</span><span class="tx">.</span><span class="fn">Once</span><span class="tx">());</span>
+  <span class="tx">email.</span><span class="fn">Verify</span><span class="tx">(e => e.</span><span class="fn">SendAsync</span><span class="tx">(</span>
+    <span class="tx">inv.Email, </span><span class="cn">It</span><span class="tx">.</span><span class="fn">IsAny</span><span class="tx">&lt;</span><span class="cn">string</span><span class="tx">&gt;(),</span>
+    <span class="cn">It</span><span class="tx">.</span><span class="fn">IsAny</span><span class="tx">&lt;</span><span class="cn">string</span><span class="tx">&gt;()),</span>
+    <span class="cn">Times</span><span class="tx">.</span><span class="fn">Once</span><span class="tx">());</span>
+<span class="tx">}</span></pre>
+      </div>
+    </div>
+  </div>
+  <div class="ss-full" style="padding-top:0;">
+    <div class="explain">
+      <div class="exp-title">🔍 How to find it (the testability test)</div>
+      <ul class="exp-list">
+        <li>Ask: <strong>"Can I run this test without a DB / SMTP / Stripe?"</strong> — if no, design is untestable</li>
+        <li>Any <strong><code>new ConcreteInfra()</code></strong> inside the class = cannot be mocked</li>
+        <li><strong>Static method calls</strong> to infrastructure (File.WriteAllText, Console.Write) = untestable</li>
+        <li>No interfaces = <strong>Moq has nothing to mock</strong></li>
+      </ul>
+    </div>
+    <div class="principle-box" style="background:#E3F4EFaa;border-color:var(--teal);margin-top:12px;">
+      <div class="pb-label" style="color:var(--teal);">Testability Rule</div>
+      If you can write <code>new Mock&lt;IDependency&gt;()</code> for every external concern and run the test in memory with no network — the design is correct. <strong>Testability is a consequence of DIP</strong>: depend on interfaces, inject them, mock them in tests.
+    </div>
+  </div>
+</div>
+
+<!-- SUMMARY TABLE -->
+<div class="sec-title">Summary — all 6 fixes at a glance</div>
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px;">
+  <table class="sum-table">
+    <thead>
+      <tr><th>#</th><th>Smell</th><th>Search for</th><th>Principle</th><th>Fix</th><th>Sev</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1</strong></td>
+        <td class="tsec">SQL Injection</td>
+        <td class="tcode">$"INSERT ... {var}"</td>
+        <td><span class="badge br">Security</span></td>
+        <td class="tfix">@Param + anonymous object</td>
+        <td>🔴</td>
+      </tr>
+      <tr>
+        <td><strong>2</strong></td>
+        <td class="tsec">Tight Coupling</td>
+        <td class="tcode">= new SqlConnection() / new SmtpClient()</td>
+        <td><span class="badge bd">DIP</span></td>
+        <td class="tfix">IInvoiceRepository + IEmailSender</td>
+        <td>🔴</td>
+      </tr>
+      <tr>
+        <td><strong>3</strong></td>
+        <td class="tsec">SRP Violation</td>
+        <td class="tcode">class *Manager with 4+ concerns</td>
+        <td><span class="badge bs">SRP</span></td>
+        <td class="tfix">Validator / Pricer / Repo / Mailer</td>
+        <td>🔴</td>
+      </tr>
+      <tr>
+        <td><strong>4</strong></td>
+        <td class="tsec">Magic Literals</td>
+        <td class="tcode">0.07m / 30 / "boss@co.com" inline</td>
+        <td><span class="badge ba">DRY</span></td>
+        <td class="tfix">const + IOptions&lt;InvoiceSettings&gt;</td>
+        <td>🟡</td>
+      </tr>
+      <tr>
+        <td><strong>5</strong></td>
+        <td class="tsec">Duplicated DB Block</td>
+        <td class="tcode">new SqlConnection( × 2+</td>
+        <td><span class="badge bg2">DRY</span></td>
+        <td class="tfix">Single SaveAsync() in repository</td>
+        <td>🟡</td>
+      </tr>
+      <tr>
+        <td><strong>6</strong></td>
+        <td class="tsec">Untestable Design</td>
+        <td class="tcode">Can't mock — no interfaces</td>
+        <td><span class="badge bd">DIP</span></td>
+        <td class="tfix">All I/O behind interfaces + Moq</td>
+        <td>🔴</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- PATTERN MAP -->
+<div class="sec-title">Fix pattern map</div>
+<div class="pmap" style="margin-bottom:20px;">
+  <div class="pm-pill" style="border-color:var(--red);">
+    <div class="pm-num" style="color:var(--red);">Fix 1</div>
+    <div class="pm-name">Parameterized Query</div>
+    <div class="pm-pattern">const sql + @Param + anon object</div>
+  </div>
+  <div class="pm-pill" style="border-color:var(--purple);">
+    <div class="pm-num" style="color:var(--purple);">Fix 2</div>
+    <div class="pm-name">Ports & Adapters</div>
+    <div class="pm-pattern">Interface in domain, impl in infra</div>
+  </div>
+  <div class="pm-pill" style="border-color:var(--blue);">
+    <div class="pm-num" style="color:var(--blue);">Fix 3</div>
+    <div class="pm-name">Extract Class</div>
+    <div class="pm-pattern">One class per concern + orchestrator</div>
+  </div>
+  <div class="pm-pill" style="border-color:var(--amber);">
+    <div class="pm-num" style="color:var(--amber);">Fix 4</div>
+    <div class="pm-name">Replace Magic Literal</div>
+    <div class="pm-pattern">private const + IOptions&lt;T&gt;</div>
+  </div>
+  <div class="pm-pill" style="border-color:var(--green);">
+    <div class="pm-num" style="color:var(--green);">Fix 5</div>
+    <div class="pm-name">Extract Method → Repository</div>
+    <div class="pm-pattern">Single SaveAsync() — no duplication</div>
+  </div>
+  <div class="pm-pill" style="border-color:var(--teal);">
+    <div class="pm-num" style="color:var(--teal);">Fix 6</div>
+    <div class="pm-name">Dependency Inversion + Moq</div>
+    <div class="pm-pattern">Interface → Mock&lt;T&gt; → Verify()</div>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<footer>
+  <strong>C# Refactoring — 6 Smells Fixed Reference</strong> &nbsp;·&nbsp;
+  SQL Injection · Tight Coupling · SRP · Magic Literals · DRY · Testability
+</footer>
+
+</body>
+</html>

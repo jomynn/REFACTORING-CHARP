@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C# Senior Refactoring Test — Document Prep Map</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700;800&display=swap');
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --ink:     #0F0E1A;
+  --purple:  #4C44B0;
+  --teal:    #0C6650;
+  --amber:   #A86510;
+  --red:     #B0302A;
+  --blue:    #1558A0;
+  --green:   #1A7A45;
+  --muted:   #6B6887;
+  --border:  #E2E0F0;
+  --bg:      #F7F6FD;
+  --surface: #FFFFFF;
+  --mono:    'JetBrains Mono', monospace;
+  --sans:    'Inter', system-ui, sans-serif;
+}
+html { font-family: var(--sans); background: var(--bg); color: var(--ink); }
+body { padding-bottom: 60px; }
+
+/* HEADER */
+header {
+  background: var(--ink);
+  color: #fff;
+  padding: 32px 40px 28px;
+  position: relative; overflow: hidden;
+}
+header::after {
+  content: '';
+  position: absolute; top: 0; right: 0;
+  width: 320px; height: 100%;
+  background: linear-gradient(135deg, transparent 40%, rgba(76,68,176,.35) 100%);
+}
+.h-eyebrow {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  letter-spacing: .14em; color: #9B98CC; text-transform: uppercase;
+  margin-bottom: 10px;
+}
+header h1 { font-size: clamp(22px,4vw,32px); font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
+header h1 em { font-style: normal; color: #A09BF0; }
+header p { margin-top: 10px; font-size: 13px; color: #AAA8CC; max-width: 560px; line-height: 1.6; }
+.h-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; position: relative; z-index: 1; }
+.h-pill {
+  font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 20px;
+  background: rgba(255,255,255,.1); color: #D4D2F0; border: 1px solid rgba(255,255,255,.12);
+}
+
+/* WRAPPER */
+.wrap { max-width: 1040px; margin: 0 auto; padding: 32px 20px 0; }
+
+/* INTRO STRIP */
+.intro-strip {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 18px 24px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 16px;
+  margin-bottom: 28px;
+}
+.stat { text-align: center; }
+.stat-num { font-size: 28px; font-weight: 800; color: var(--purple); font-family: var(--mono); }
+.stat-label { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+
+/* SECTION TITLE */
+.section-title {
+  font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); margin: 28px 0 14px;
+  display: flex; align-items: center; gap: 10px;
+}
+.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* DOC GRID */
+.doc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px,1fr)); gap: 14px; }
+
+/* DOC CARD */
+.doc-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; overflow: hidden;
+  transition: box-shadow .15s, transform .15s;
+  cursor: default;
+}
+.doc-card:hover { box-shadow: 0 6px 24px rgba(76,68,176,.1); transform: translateY(-2px); }
+
+.doc-card-top {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; gap: 12px;
+}
+.doc-icon {
+  width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px;
+}
+.doc-meta { flex: 1; min-width: 0; }
+.doc-name { font-size: 13px; font-weight: 700; color: var(--ink); line-height: 1.3; }
+.doc-sub  { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+.doc-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 7px; }
+.doc-tag  {
+  font-size: 9.5px; font-weight: 600; padding: 2px 7px; border-radius: 10px;
+  font-family: var(--mono); letter-spacing: .02em;
+}
+
+.doc-card-body { padding: 12px 16px; }
+.doc-items { list-style: none; }
+.doc-items li {
+  font-size: 11.5px; color: var(--muted); padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  display: flex; gap: 8px; align-items: flex-start; line-height: 1.5;
+}
+.doc-items li:last-child { border-bottom: none; }
+.doc-items li::before { content: '→'; color: var(--border); flex-shrink: 0; margin-top: 1px; }
+.doc-items li strong { color: var(--ink); font-weight: 600; }
+
+.priority-bar {
+  margin: 10px 16px 14px;
+  height: 3px; border-radius: 2px; background: var(--border);
+  position: relative; overflow: visible;
+}
+.priority-fill { height: 100%; border-radius: 2px; }
+.priority-label {
+  font-size: 9.5px; font-weight: 700; font-family: var(--mono);
+  color: var(--muted); margin-top: 4px; letter-spacing: .05em;
+}
+
+/* TIME TABLE */
+.time-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.time-table th {
+  padding: 8px 12px; text-align: left;
+  background: var(--bg); border-bottom: 2px solid var(--border);
+  font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted);
+}
+.time-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.time-table tr:last-child td { border-bottom: none; }
+.time-table tr:hover td { background: var(--bg); }
+.t-time { font-family: var(--mono); font-weight: 600; white-space: nowrap; }
+.t-red   { color: var(--red); }
+.t-amber { color: var(--amber); }
+.t-green { color: var(--green); }
+.t-blue  { color: var(--blue); }
+.t-purple{ color: var(--purple); }
+
+/* FULL-WIDTH CARD */
+.full-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; overflow: hidden; margin-bottom: 14px;
+}
+.full-card-header {
+  padding: 12px 18px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.full-card-header .fch-title { font-size: 13px; font-weight: 700; }
+.full-card-header .fch-sub   { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.full-card-body { padding: 16px 18px; }
+
+/* TOPIC PILLS */
+.topic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 10px; }
+.topic-pill {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 12px;
+}
+.topic-pill .tp-name  { font-size: 12px; font-weight: 700; color: var(--ink); }
+.topic-pill .tp-depth { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.topic-pill .tp-bar   { height: 3px; border-radius: 2px; margin-top: 7px; background: var(--border); }
+.topic-pill .tp-fill  { height: 100%; border-radius: 2px; }
+
+/* INTERVIEW Q */
+.q-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media(max-width:600px){ .q-grid { grid-template-columns: 1fr; } }
+.q-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+.q-card .q-label { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 5px; }
+.q-card .q-text  { font-size: 12px; color: var(--ink); line-height: 1.55; }
+.q-card .q-hint  { font-size: 10.5px; color: var(--muted); margin-top: 5px; font-style: italic; }
+
+/* FOOTER */
+footer {
+  margin-top: 44px; background: var(--ink);
+  color: #AAA8CC; font-size: 11px; text-align: center; padding: 14px;
+}
+footer strong { color: #fff; }
+
+/* COLOR HELPERS */
+.c-purple{ background:#EEECFCaa; color:var(--purple); border-color:#CCC9F5; }
+.c-teal  { background:#E3F4EFaa; color:var(--teal);   border-color:#A8D9CA; }
+.c-amber { background:#FBF0E2aa; color:var(--amber);  border-color:#E8C990; }
+.c-red   { background:#FCEDECC0; color:var(--red);    border-color:#F0BCBA; }
+.c-blue  { background:#E5EEF9aa; color:var(--blue);   border-color:#B5CEF0; }
+.c-green { background:#E4F3EAaa; color:var(--green);  border-color:#AADABB; }
+.fi-purple{ background:#EEECFCaa; }
+.fi-teal  { background:#E3F4EFaa; }
+.fi-amber { background:#FBF0E2aa; }
+.fi-red   { background:#FCEDECaa; }
+.fi-blue  { background:#E5EEF9aa; }
+.fi-green { background:#E4F3EAaa; }
+.pf-purple{ background:var(--purple); }
+.pf-teal  { background:var(--teal); }
+.pf-amber { background:var(--amber); }
+.pf-red   { background:var(--red); }
+.pf-blue  { background:var(--blue); }
+.pf-green { background:var(--green); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="h-eyebrow">Senior → Lead / Architect · 60-min · C# Refactoring Test</div>
+  <h1>Everything You Need to<br><em>Know Before You Walk In</em></h1>
+  <p>A complete document map covering every topic, pattern, and concept that appears in Senior/Lead C# refactoring interviews — with priority, depth, and study order.</p>
+  <div class="h-pills">
+    <span class="h-pill">SOLID</span>
+    <span class="h-pill">Clean Architecture</span>
+    <span class="h-pill">Design Patterns</span>
+    <span class="h-pill">Unit Testing</span>
+    <span class="h-pill">ASP.NET Core</span>
+    <span class="h-pill">60-min Strategy</span>
+    <span class="h-pill">Interview Q&amp;A</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- STATS -->
+  <div class="intro-strip">
+    <div class="stat"><div class="stat-num">12</div><div class="stat-label">Topic areas to cover</div></div>
+    <div class="stat"><div class="stat-num">60</div><div class="stat-label">Minutes on test day</div></div>
+    <div class="stat"><div class="stat-num">5</div><div class="stat-label">Must-know patterns<br>for Senior/Lead</div></div>
+    <div class="stat"><div class="stat-num">3</div><div class="stat-label">Layers reviewers<br>score you on</div></div>
+  </div>
+
+  <!-- WHAT REVIEWERS SCORE -->
+  <div class="section-title">What reviewers actually score you on</div>
+  <div class="full-card">
+    <div class="full-card-body">
+      <div class="topic-grid">
+        <div class="topic-pill">
+          <div class="tp-name">Code correctness</div>
+          <div class="tp-depth">Does refactored code still work? Tests pass?</div>
+          <div class="tp-bar"><div class="tp-fill pf-purple" style="width:100%"></div></div>
+        </div>
+        <div class="topic-pill">
+          <div class="tp-name">SOLID application</div>
+          <div class="tp-depth">Can you name and apply each principle?</div>
+          <div class="tp-bar"><div class="tp-fill pf-purple" style="width:95%"></div></div>
+        </div>
+        <div class="topic-pill">
+          <div class="tp-name">Architecture thinking</div>
+          <div class="tp-depth">Do you see layers? Boundaries? Dependencies?</div>
+          <div class="tp-bar"><div class="tp-fill pf-blue" style="width:90%"></div></div>
+        </div>
+        <div class="topic-pill">
+          <div class="tp-name">Testability</div>
+          <div class="tp-depth">Can your code be unit tested without infra?</div>
+          <div class="tp-bar"><div class="tp-fill pf-teal" style="width:88%"></div></div>
+        </div>
+        <div class="topic-pill">
+          <div class="tp-name">Naming &amp; readability</div>
+          <div class="tp-depth">Self-documenting code, no magic numbers</div>
+          <div class="tp-bar"><div class="tp-fill pf-amber" style="width:80%"></div></div>
+        </div>
+        <div class="topic-pill">
+          <div class="tp-name">Communication</div>
+          <div class="tp-depth">Can you explain WHY at Lead level?</div>
+          <div class="tp-bar"><div class="tp-fill pf-green" style="width:85%"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CORE DOCUMENTS -->
+  <div class="section-title">Core documents — study in this order</div>
+  <div class="doc-grid">
+
+    <!-- SOLID -->
+    <div class="doc-card">
+      <div class="doc-card-top">
+        <div class="doc-icon fi-purple">🏛</div>
+        <div class="doc-meta">
+          <div class="doc-name">SOLID Principles</div>
+          <div class="doc-sub">Foundation — every senior test includes this</div>
+          <div class="doc-tags">
+            <span class="doc-tag c-purple">Must Know</span>
+            <span class="doc-tag c-red">Critical</span>
+          </div>
+        </div>
+      </div>
+      <div class="priority-bar"><div class="priority-fill pf-purple" style="width:100%"></div>
+        <div class="priority-label">PRIORITY: 10 / 10</div>
+      </div>
+      <div class="doc-card-body">
+        <ul class="doc-items">
+          <li><strong>S</strong> — Extract class, one reason to change</li>
+          <li><strong>O</strong> — Strategy / Policy, open for extension</li>
+          <li><strong>L</strong> — Interface over deep inheritance</li>
+          <li><strong>I</strong> — Role interfaces, small and focused</li>
+          <li><strong>D</strong> — Constructor injection, depend on abstraction</li>
+          <li>Name the pattern when you apply it — e.g. "This is Strategy"</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- CLEAN ARCH -->
+    <div class="doc-card">
+      <div class="doc-card-top">
+        <div class="doc-icon fi-blue">🏗</div>
+        <div class="doc-meta">
+          <div class="doc-name">Clean Architecture Layers</div>
+          <div class="doc-sub">Required for Senior → Lead level</div>
+          <div class="doc-tags">
+            <span class="doc-tag c-blue">Must Know</span>
+            <span class="doc-tag c-red">Critical</span>
+          </div>
+        </div>
+      </div>
+      <div class="priority-bar"><div class="priority-fill pf-blue" style="width:98%"></div>
+        <div class="priority-label">PRIORITY: 9.5 / 10</div>
+      </div>
+      <div class="doc-card-body">
+        <ul class="doc-items">
+          <li><strong>Domain</strong> — Entities, Value Objects, Domain Events</li>
+          <li><strong>Application</strong> — Use Cases, CQRS, MediatR handlers</li>
+          <li><strong>Infrastructure</strong> — DB, SMTP, HTTP, Queue adapters</li>
+          <li><strong>Presentation</strong> — Controllers, minimal API, DTOs</li>
+          <li>Dependency rule: arrows always point inward</li>
+          <li>Ports &amp; Adapters (Hexagonal) — know the pattern name</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- DESIGN PATTERNS -->
+    <div class="doc-card">
+      <div class="doc-card-top">
+        <div class="doc-icon fi-teal">🧩</div>
+        <div class="doc-meta">
+          <div class="doc-name">Design Patterns (GoF)</div>
+          <div class="doc-sub">Patterns that appear in refactoring tests</div>
+          <div class="doc-tags">
+            <span class="doc-tag c-teal">Must Know</span>
+            <span class="doc-tag c-red">Critical</span>
+          </div>
+        </div>
+      </div>
+      <div class="priority-bar"><div class="priority-fill pf-teal" style="width:95%"></div>
+        <div class="priority-label">PRIORITY: 9 / 10</div>
+      </div>
+      <div class="doc-card-body">
+        <ul class="doc-items">
+          <li><strong>Strategy</strong> — replace if/switch on type</li>
+          <li><strong>Repository</strong> — abstract data access</li>
+          <li><strong>Factory / Factory Method</strong> — object creation</li>
+          <li><strong>Decorator</strong> — add behaviour without editing</li>
+          <li><strong>State</strong> — status transition logic</li>
+          <li><strong>Observer / Event</strong> — decouple side effects</li>
+          <li><strong>Adapter</strong> — wrap external SDKs</li>
+          <li><strong>Mediator</strong> — MediatR / CQRS handlers</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- UNIT TESTING -->
+    <div class="doc-card">
+      <div class="doc-card-top">
+        <div class="doc-icon fi-green">🧪</div>
+        <div class="doc-meta">
+          <div class="doc-name">Unit Testing with Moq + NUnit/xUnit</div>
+          <div class="doc-sub">Senior must write tests, not just code</div>
+          <div class="doc-tags">
+            <span class="doc-tag c-green">Must Know</span>
+            <span class="doc-tag c-red">Critical</span>
+          </div>
+        </div>
+      </div>
+      <div class="priority-bar"><div class="priority-fill pf-green" style="width:93%"></div>
+        <div class="priority-label">PRIORITY: 9 / 10</div>
+      </div>
+      <div class="doc-card-body">
+        <ul class="doc-items">
+          <li><strong>Arrange / Act / Assert</strong> structure every test</li>
+          <li><strong>Moq</strong> — Mock&lt;T&gt;, Setup(), Verify(), Returns()</li>
+          <li><strong>xUnit</strong> — [Fact], [Theory], [InlineData]</li>
+          <li><strong>NUnit</strong> — [Test], [TestCase], Assert.That()</li>
+          <li>Test one thing per test — single reason to fail</li>
+          <li>Mock only direct dependencies, not transitive ones</li>
+          <li>Name: MethodName_Scenario_ExpectedResult</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- REFACTORING PATTERNS -->
+    <div class="doc-card">
+      <div class="doc-card-top">
+        <div class="doc-icon fi-amber">🔧</div>
+        <div class="doc-meta">
+          <div class="doc-name">Refactoring Patterns (Fowler)</div>
+          <div class="doc-sub">Named moves — call them by name in the test</div>
+          <div class="doc-tags">
+            <span class="doc-tag c-amber">Must Know</span>
+            <span class="doc-tag c-amber">High</span>
+          </div>
+        </div>
+      </div>
+      <div class="priority-bar"><div class="priority-fill pf-amber" style="width:88%"></div>
+        <div class="priority-label">PRIORITY: 8.5 / 10</div>
+      </div>
+      <div class="doc-card-body">
+        <ul class="doc-items">
+          <li><strong>Extract Method</strong> — long method → named methods</li>
+          <li><strong>Extract Class</strong> — SRP violation → split class</li>
+          <li><strong>Replace Magic Number with Constant</strong></li>
+          <li><strong>Replace Conditional with Polymorphism</strong></li>
+          <li><strong>Introduce Parameter Object</strong> — 5+ params</li>
+          <li><strong>Guard Clauses</strong> — flatten nested if pyramid</li>
+          <li><strong>Move Method</strong> — method to the class it belongs</li>
+          <li><strong>Rename</strong> — x, tmp → descriptive names</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- DI + ASP.NET CORE -->
+    <div class="doc-card">
+      <div class="doc-card-top">
+        <div class="doc-icon fi-purple">⚙️</div>
+        <div class="doc-meta">
+          <div class="doc-name">ASP.NET Core DI &amp; Options</div>
+          <div class="doc-sub">Wire up every pattern you refactor</div>
+          <div class="doc-tags">
+            <span class="doc-tag c-purple">Must Know</span>
+            <span class="doc-tag c-amber">High</span>
+          </div>
+        </div>
+      </div>
+      <div class="priority-bar"><div class="priority-fill pf-purple" style="width:85%"></div>
+        <div class="priority-label">PRIORITY: 8 / 10</div>
+      </div>
+      <div class="doc-card-body">
+        <ul class="doc-items">
+          <li><strong>AddScoped / AddTransient / AddSingleton</strong> — know the difference</li>
+          <li><strong>IOptions&lt;T&gt;</strong> — bind appsettings to typed config</li>
+          <li><strong>IEnumerable&lt;T&gt; injection</strong> — collection of strategies</li>
+          <li><strong>IHttpClientFactory</strong> — typed HTTP clients</li>
+          <li>Middleware pipeline — order matters</li>
+          <li>Program.cs registration conventions</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- CODE SMELLS -->
+    <div class="doc-card">
+      <div class="doc-card-top">
+        <div class="doc-icon fi-red">👃</div>
+        <div class="doc-meta">
+          <div class="doc-name">Code Smell Identification</div>
+          <div class="doc-sub">Scan fast — first 5–10 min of the test</div>
+          <div class="doc-tags">
+            <span class="doc-tag c-red">Must Know</span>
+            <span class="doc-tag c-amber">High</span>
+          </div>
+        </div>
+      </div>
+      <div class="priority-bar"><div class="priority-fill pf-red" style="width:88%"></div>
+        <div class="priority-label">PRIORITY: 8.5 / 10</div>
+      </div>
+      <div class="doc-card-body">
+        <ul class="doc-items">
+          <li><strong>God class</strong> — file over 200 lines, *Manager name</li>
+          <li><strong>Long method</strong> — over 20–30 lines, multiple concerns</li>
+          <li><strong>Magic numbers/strings</strong> — 0.15, 86400, "admin"</li>
+          <li><strong>Data clumps</strong> — same 4 params passed everywhere</li>
+          <li><strong>Feature Envy</strong> — method uses another class's data more</li>
+          <li><strong>Shotgun surgery</strong> — 1 change hits 10 files</li>
+          <li><strong>Primitive obsession</strong> — string for email, int for money</li>
+          <li><strong>Dead code</strong> — commented-out blocks, unused methods</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- CQRS / MEDIATR -->
+    <div class="doc-card">
+      <div class="doc-card-top">
+        <div class="doc-icon fi-blue">📨</div>
+        <div class="doc-meta">
+          <div class="doc-name">CQRS + MediatR</div>
+          <div class="doc-sub">Expected at Lead level in .NET</div>
+          <div class="doc-tags">
+            <span class="doc-tag c-blue">Lead Level</span>
+            <span class="doc-tag c-amber">High</span>
+          </div>
+        </div>
+      </div>
+      <div class="priority-bar"><div class="priority-fill pf-blue" style="width:80%"></div>
+        <div class="priority-label">PRIORITY: 7.5 / 10</div>
+      </div>
+      <div class="doc-card-body">
+        <ul class="doc-items">
+          <li><strong>IRequest&lt;T&gt;</strong> — command or query object</li>
+          <li><strong>IRequestHandler&lt;,&gt;</strong> — one handler per request</li>
+          <li><strong>INotification</strong> — domain events / fan-out</li>
+          <li><strong>IPipelineBehavior</strong> — cross-cutting: logging, validation</li>
+          <li>Command = write, no return; Query = read, return data</li>
+          <li>How it relates to SRP and OCP</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- DOMAIN MODEL -->
+    <div class="doc-card">
+      <div class="doc-card-top">
+        <div class="doc-icon fi-teal">🧱</div>
+        <div class="doc-meta">
+          <div class="doc-name">Domain Model Concepts</div>
+          <div class="doc-sub">Shows architectural maturity at Lead level</div>
+          <div class="doc-tags">
+            <span class="doc-tag c-teal">Lead Level</span>
+            <span class="doc-tag c-teal">Medium</span>
+          </div>
+        </div>
+      </div>
+      <div class="priority-bar"><div class="priority-fill pf-teal" style="width:72%"></div>
+        <div class="priority-label">PRIORITY: 7 / 10</div>
+      </div>
+      <div class="doc-card-body">
+        <ul class="doc-items">
+          <li><strong>Entity</strong> — identity-based, mutable</li>
+          <li><strong>Value Object</strong> — equality by value, immutable</li>
+          <li><strong>Aggregate Root</strong> — consistency boundary</li>
+          <li><strong>Domain Event</strong> — something significant happened</li>
+          <li><strong>Repository interface</strong> — defined in domain, not infra</li>
+          <li>Anemic vs Rich domain model — know the trade-offs</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ASYNC / AWAIT -->
+    <div class="doc-card">
+      <div class="doc-card-top">
+        <div class="doc-icon fi-amber">⚡</div>
+        <div class="doc-meta">
+          <div class="doc-name">Async / Await Patterns</div>
+          <div class="doc-sub">Common in refactoring — sync → async</div>
+          <div class="doc-tags">
+            <span class="doc-tag c-amber">Must Know</span>
+            <span class="doc-tag c-teal">Medium</span>
+          </div>
+        </div>
+      </div>
+      <div class="priority-bar"><div class="priority-fill pf-amber" style="width:75%"></div>
+        <div class="priority-label">PRIORITY: 7 / 10</div>
+      </div>
+      <div class="doc-card-body">
+        <ul class="doc-items">
+          <li>Never <code>.Result</code> or <code>.Wait()</code> — causes deadlock</li>
+          <li>Always <code>await</code> all the way up — no sync-over-async</li>
+          <li><code>ConfigureAwait(false)</code> in library code</li>
+          <li><code>Task.WhenAll()</code> — parallel async calls</li>
+          <li><code>CancellationToken</code> — pass through every async method</li>
+          <li>IAsyncDisposable — async using pattern</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- EXCEPTION HANDLING -->
+    <div class="doc-card">
+      <div class="doc-card-top">
+        <div class="doc-icon fi-red">🚨</div>
+        <div class="doc-meta">
+          <div class="doc-name">Exception Handling Patterns</div>
+          <div class="doc-sub">Often broken in code under test</div>
+          <div class="doc-tags">
+            <span class="doc-tag c-red">Common Smell</span>
+            <span class="doc-tag c-teal">Medium</span>
+          </div>
+        </div>
+      </div>
+      <div class="priority-bar"><div class="priority-fill pf-red" style="width:68%"></div>
+        <div class="priority-label">PRIORITY: 6.5 / 10</div>
+      </div>
+      <div class="doc-card-body">
+        <ul class="doc-items">
+          <li>Never catch <code>Exception</code> and swallow silently</li>
+          <li>Custom domain exceptions — <code>OrderNotFoundException</code></li>
+          <li>Global exception middleware in ASP.NET Core</li>
+          <li><code>ArgumentException</code> vs <code>InvalidOperationException</code></li>
+          <li>Result pattern — return errors as values, not throws</li>
+          <li>Never use exceptions for flow control</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- LOGGING -->
+    <div class="doc-card">
+      <div class="doc-card-top">
+        <div class="doc-icon fi-green">📋</div>
+        <div class="doc-meta">
+          <div class="doc-name">Structured Logging</div>
+          <div class="doc-sub">Console.WriteLine is always a smell</div>
+          <div class="doc-tags">
+            <span class="doc-tag c-green">Common Fix</span>
+            <span class="doc-tag c-teal">Medium</span>
+          </div>
+        </div>
+      </div>
+      <div class="priority-bar"><div class="priority-fill pf-green" style="width:65%"></div>
+        <div class="priority-label">PRIORITY: 6 / 10</div>
+      </div>
+      <div class="doc-card-body">
+        <ul class="doc-items">
+          <li><code>ILogger&lt;T&gt;</code> injected — never static or Console</li>
+          <li>Named placeholders: <code>{OrderId}</code> not string concat</li>
+          <li>Correct log levels: Info / Warning / Error / Critical</li>
+          <li>Serilog — enrichers, sinks, structured output</li>
+          <li>Never log sensitive data — PII, passwords, tokens</li>
+        </ul>
+      </div>
+    </div>
+
+  </div><!-- /doc-grid -->
+
+  <!-- 60-MIN STRATEGY TABLE -->
+  <div class="section-title">60-minute time-box strategy</div>
+  <div class="full-card">
+    <div class="full-card-header">
+      <div>
+        <div class="fch-title">Minute-by-minute plan</div>
+        <div class="fch-sub">Senior/Lead — they judge thinking speed AND architectural decisions</div>
+      </div>
+    </div>
+    <div class="full-card-body" style="padding:0;">
+      <table class="time-table">
+        <thead>
+          <tr><th>Time</th><th>Phase</th><th>What to do</th><th>Senior tip</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="t-time t-blue">0–5 min</td>
+            <td><strong>Read</strong></td>
+            <td>Read all instructions fully. Note language, framework, any explicit constraints. Do NOT touch code.</td>
+            <td>Check if tests exist — if yes, run them first so you know baseline.</td>
+          </tr>
+          <tr>
+            <td class="t-time t-amber">5–15 min</td>
+            <td><strong>Explore</strong></td>
+            <td>Apply SOLID checklist. List the top 3–5 smells with file + line reference. Write them as comments.</td>
+            <td>Identify the architecture violation first (DIP/SRP) — structural fixes unlock everything else.</td>
+          </tr>
+          <tr>
+            <td class="t-time t-purple">15–20 min</td>
+            <td><strong>Plan</strong></td>
+            <td>Write a 3-line refactoring plan as a comment block at top of file. Prioritize: Structural → Readability → Polish.</td>
+            <td>This comment block shows the reviewer your Lead-level thinking even if you don't finish.</td>
+          </tr>
+          <tr>
+            <td class="t-time t-green">20–45 min</td>
+            <td><strong>Refactor</strong></td>
+            <td>Start with the biggest structural issue. Run tests after each completed pattern. Keep each change small and verifiable.</td>
+            <td>Name the pattern out loud (in comments): "// Strategy pattern — each discount type is a class"</td>
+          </tr>
+          <tr>
+            <td class="t-time t-green">45–55 min</td>
+            <td><strong>Test</strong></td>
+            <td>Write or fix unit tests. At least 1 test per extracted class. AAA structure. Mock all external dependencies.</td>
+            <td>A refactor without tests is incomplete at Lead level — reviewers expect Moq usage.</td>
+          </tr>
+          <tr>
+            <td class="t-time t-red">55–60 min</td>
+            <td><strong>Review</strong></td>
+            <td>Re-read your changes. Check naming, no magic numbers remain, no Console.WriteLine, tests green.</td>
+            <td>Add a 3-line summary comment: what you changed, why, and what you would do next with more time.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TRIAGE RULE -->
+  <div class="full-card" style="border-left:4px solid var(--amber);">
+    <div class="full-card-header">
+      <div>
+        <div class="fch-title">⏱ If time runs short — triage rule</div>
+        <div class="fch-sub">Priority order when you can't finish everything</div>
+      </div>
+    </div>
+    <div class="full-card-body">
+      <div class="topic-grid">
+        <div class="topic-pill">
+          <div class="tp-name" style="color:var(--red);">1st — Fix DIP violations</div>
+          <div class="tp-depth">Extract interfaces, inject via constructor. This unlocks testability.</div>
+        </div>
+        <div class="topic-pill">
+          <div class="tp-name" style="color:var(--red);">2nd — Fix SRP violations</div>
+          <div class="tp-depth">Split god classes. One class, one job. Most visible to reviewer.</div>
+        </div>
+        <div class="topic-pill">
+          <div class="tp-name" style="color:var(--amber);">3rd — Replace switch/if chains</div>
+          <div class="tp-depth">Strategy pattern. Shows OCP knowledge clearly.</div>
+        </div>
+        <div class="topic-pill">
+          <div class="tp-name" style="color:var(--amber);">4th — Extract methods + naming</div>
+          <div class="tp-depth">Guard clauses, named constants, descriptive names.</div>
+        </div>
+        <div class="topic-pill">
+          <div class="tp-name" style="color:var(--green);">5th — Write tests</div>
+          <div class="tp-depth">Even 2–3 Moq tests signal Lead-level discipline.</div>
+        </div>
+        <div class="topic-pill">
+          <div class="tp-name" style="color:var(--muted);">Leave a TODO comment</div>
+          <div class="tp-depth">// TODO: extract to IMailer — shows you saw it and know the fix.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INTERVIEW Q&A -->
+  <div class="section-title">Likely interview questions for Senior → Lead</div>
+  <div class="full-card">
+    <div class="full-card-body">
+      <div class="q-grid">
+        <div class="q-card">
+          <div class="q-label">Architecture</div>
+          <div class="q-text">"What's the difference between Clean Architecture and MVC?"</div>
+          <div class="q-hint">→ Dependency direction, layer isolation, testability without framework</div>
+        </div>
+        <div class="q-card">
+          <div class="q-label">SOLID</div>
+          <div class="q-text">"Can you violate DRY while following SOLID?"</div>
+          <div class="q-hint">→ Yes — a bad abstraction is worse than duplication (AHA principle)</div>
+        </div>
+        <div class="q-card">
+          <div class="q-label">Patterns</div>
+          <div class="q-text">"When would you NOT use the Repository pattern?"</div>
+          <div class="q-hint">→ Simple CRUD apps, Event Sourcing stores, direct Dapper usage</div>
+        </div>
+        <div class="q-card">
+          <div class="q-label">Testing</div>
+          <div class="q-text">"What's the difference between a mock and a stub?"</div>
+          <div class="q-hint">→ Stub returns data; mock verifies behaviour was called</div>
+        </div>
+        <div class="q-card">
+          <div class="q-label">Design</div>
+          <div class="q-text">"How do you handle cross-cutting concerns without violating SRP?"</div>
+          <div class="q-hint">→ Decorator, Middleware, IPipelineBehavior in MediatR</div>
+        </div>
+        <div class="q-card">
+          <div class="q-label">Lead thinking</div>
+          <div class="q-text">"How would you introduce clean architecture to a legacy codebase?"</div>
+          <div class="q-hint">→ Strangler Fig pattern, seam injection, migrate module by module</div>
+        </div>
+        <div class="q-card">
+          <div class="q-label">Trade-offs</div>
+          <div class="q-text">"When is a God class acceptable?"</div>
+          <div class="q-hint">→ Scripts, prototypes, or when the domain truly is one concern</div>
+        </div>
+        <div class="q-card">
+          <div class="q-label">Process</div>
+          <div class="q-text">"How do you refactor safely without breaking production?"</div>
+          <div class="q-hint">→ Tests first, small commits, feature flags, refactor ≠ rewrite</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUICK REFERENCE: C# ONE-LINERS -->
+  <div class="section-title">C# patterns one-liners — memorise these</div>
+  <div class="full-card">
+    <div class="full-card-body">
+      <div class="topic-grid" style="font-family:var(--mono); font-size:11px; gap:8px;">
+        <div class="topic-pill"><div class="tp-name">Constructor injection</div><div class="tp-depth" style="font-family:var(--mono); color:var(--purple);">ctor(IRepository repo) => _repo = repo;</div></div>
+        <div class="topic-pill"><div class="tp-name">Strategy collection</div><div class="tp-depth" style="font-family:var(--mono); color:var(--teal);">.ToDictionary(p => p.Type)</div></div>
+        <div class="topic-pill"><div class="tp-name">Guard clause</div><div class="tp-depth" style="font-family:var(--mono); color:var(--red);">if (x == null) return "error";</div></div>
+        <div class="topic-pill"><div class="tp-name">Named constant</div><div class="tp-depth" style="font-family:var(--mono); color:var(--amber);">private const decimal TaxRate = 0.07m;</div></div>
+        <div class="topic-pill"><div class="tp-name">Parameter object</div><div class="tp-depth" style="font-family:var(--mono); color:var(--blue);">public record CreateUserRequest(...);</div></div>
+        <div class="topic-pill"><div class="tp-name">Async right</div><div class="tp-depth" style="font-family:var(--mono); color:var(--green);">await _repo.SaveAsync(entity);</div></div>
+        <div class="topic-pill"><div class="tp-name">IOptions config</div><div class="tp-depth" style="font-family:var(--mono); color:var(--purple);">IOptions&lt;MailSettings&gt; opts</div></div>
+        <div class="topic-pill"><div class="tp-name">Structured log</div><div class="tp-depth" style="font-family:var(--mono); color:var(--teal);">_log.LogInformation("{Id}", id);</div></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<footer>
+  <strong>Senior → Lead C# Refactoring Test — Prep Map</strong> &nbsp;·&nbsp;
+  SOLID · Clean Architecture · Design Patterns · Unit Testing · ASP.NET Core · 60-min Strategy
+</footer>
+
+</body>
+</html>

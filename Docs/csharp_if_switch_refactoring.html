@@ -1,0 +1,1078 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.tabs{display:flex;gap:5px;flex-wrap:wrap;padding:12px 0 0;}
+.tab{padding:5px 12px;border-radius:20px;font-size:11.5px;font-weight:500;cursor:pointer;border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-secondary);transition:all .15s;}
+.tab.active{background:var(--color-text-primary);color:var(--color-background-primary);border-color:transparent;}
+.panel{display:none;padding:12px 0;}
+.panel.active{display:block;}
+.desc{font-size:12.5px;color:var(--color-text-secondary);line-height:1.6;margin-bottom:10px;}
+.desc strong{color:var(--color-text-primary);font-weight:500;}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;}
+.code-card{border-radius:8px;overflow:hidden;border:0.5px solid var(--color-border-tertiary);}
+.ch{padding:6px 12px;font-size:11px;font-weight:500;display:flex;align-items:center;gap:6px;}
+.bad-h{background:#FCEBEB;color:#791F1F;border-bottom:0.5px solid #F7C1C1;}
+.good-h{background:#EAF3DE;color:#27500A;border-bottom:0.5px solid #C0DD97;}
+@media(prefers-color-scheme:dark){.bad-h{background:#501313;color:#F7C1C1;border-bottom-color:#791F1F;}.good-h{background:#173404;color:#C0DD97;border-bottom-color:#27500A;}}
+pre{padding:10px 12px;font-family:var(--font-mono);font-size:10.5px;line-height:1.65;color:var(--color-text-primary);background:var(--color-background-secondary);white-space:pre;overflow-x:auto;}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px;}
+.tag{display:inline-block;font-size:11px;padding:2px 9px;border-radius:20px;}
+.tag-bad{background:#FCEBEB;color:#791F1F;}
+.tag-good{background:#EAF3DE;color:#27500A;}
+.tag-p{background:#EEEDFE;color:#26215C;}
+@media(prefers-color-scheme:dark){.tag-bad{background:#501313;color:#F7C1C1;}.tag-good{background:#173404;color:#C0DD97;}.tag-p{background:#26215C;color:#CECBF6;}}
+.tip{margin-top:10px;padding:9px 12px;background:var(--color-background-secondary);border-left:3px solid #534AB7;font-size:11.5px;color:var(--color-text-secondary);line-height:1.6;}
+.tip strong{color:var(--color-text-primary);}
+.ask-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;}
+.ask-btn{padding:5px 12px;border-radius:8px;font-size:11.5px;cursor:pointer;border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-secondary);transition:background .12s;}
+.ask-btn:hover{background:var(--color-background-secondary);}
+</style>
+
+<div class="tabs">
+  <button class="tab active" onclick="show(0)">1 Discount type</button>
+  <button class="tab" onclick="show(1)">2 Payment method</button>
+  <button class="tab" onclick="show(2)">3 Order status</button>
+  <button class="tab" onclick="show(3)">4 Notification channel</button>
+  <button class="tab" onclick="show(4)">5 Report format</button>
+  <button class="tab" onclick="show(5)">6 User role</button>
+  <button class="tab" onclick="show(6)">7 Shipping method</button>
+  <button class="tab" onclick="show(7)">8 Nested if chain</button>
+</div>
+
+<!-- 1. DISCOUNT TYPE -->
+<div class="panel active" id="p0">
+  <p class="desc"><strong>Discount by customer type</strong> — every new customer type means editing the same method. Classic OCP violation via if/else chain.</p>
+  <div class="tags">
+    <span class="tag tag-bad">if/else on customer type string</span>
+    <span class="tag tag-bad">add type = edit method</span>
+    <span class="tag tag-p">Fix: Strategy pattern + IDiscountPolicy</span>
+  </div>
+  <div class="grid2">
+    <div class="code-card">
+      <div class="ch bad-h">✕ Bad</div>
+<pre>public class DiscountService
+{
+    public decimal GetDiscount(
+        string customerType, decimal total)
+    {
+        if (customerType == "VIP")
+            return total * 0.30m;
+        else if (customerType == "Member")
+            return total * 0.15m;
+        else if (customerType == "New")
+            return total * 0.05m;
+        else if (customerType == "Employee")
+            return total * 0.40m;
+        else if (customerType == "Student")
+            return total * 0.10m;
+        // add new type = EDIT THIS METHOD
+        return 0m;
+    }
+}</pre>
+    </div>
+    <div class="code-card">
+      <div class="ch good-h">✓ Refactored — Strategy</div>
+<pre>public interface IDiscountPolicy
+{
+    string CustomerType { get; }
+    decimal Calculate(decimal total);
+}
+
+public class VipDiscount : IDiscountPolicy
+{
+    public string CustomerType => "VIP";
+    public decimal Calculate(decimal total)
+        => total * 0.30m;
+}
+public class MemberDiscount : IDiscountPolicy
+{
+    public string CustomerType => "Member";
+    public decimal Calculate(decimal total)
+        => total * 0.15m;
+}
+public class EmployeeDiscount : IDiscountPolicy
+{
+    public string CustomerType => "Employee";
+    public decimal Calculate(decimal total)
+        => total * 0.40m;
+}
+// add new type = add new class, touch nothing
+
+public class DiscountService
+{
+    private readonly Dictionary&lt;string,
+        IDiscountPolicy&gt; _policies;
+
+    public DiscountService(
+        IEnumerable&lt;IDiscountPolicy&gt; policies)
+        => _policies = policies
+            .ToDictionary(p => p.CustomerType);
+
+    public decimal GetDiscount(
+        string customerType, decimal total)
+        => _policies.TryGetValue(
+               customerType, out var policy)
+            ? policy.Calculate(total)
+            : 0m;
+}
+// Program.cs:
+// builder.Services
+//   .AddScoped&lt;IDiscountPolicy, VipDiscount&gt;()
+//   .AddScoped&lt;IDiscountPolicy, MemberDiscount&gt;()
+//   .AddScoped&lt;IDiscountPolicy, EmployeeDiscount&gt;()
+//   .AddScoped&lt;DiscountService&gt;();</pre>
+    </div>
+  </div>
+  <div class="tip"><strong>Pattern: Strategy.</strong> The if/else becomes a dictionary lookup. Adding a new discount = add one class + one DI registration. Zero edits to <code>DiscountService</code>.</div>
+  <div class="ask-row">
+    <button class="ask-btn" onclick="sendPrompt('Show unit tests for DiscountService with mock IDiscountPolicy using Moq in C#')">Test with Moq ↗</button>
+    <button class="ask-btn" onclick="sendPrompt('Show discount policy loaded from database instead of hardcoded in C#')">From database ↗</button>
+  </div>
+</div>
+
+<!-- 2. PAYMENT METHOD -->
+<div class="panel" id="p1">
+  <p class="desc"><strong>Payment method routing</strong> — switch on payment type string, each case has different SDK calls inline. Adding PayPal means editing the switch.</p>
+  <div class="tags">
+    <span class="tag tag-bad">switch on payment type</span>
+    <span class="tag tag-bad">SDK calls inline in switch</span>
+    <span class="tag tag-p">Fix: IPaymentHandler + handler collection</span>
+  </div>
+  <div class="grid2">
+    <div class="code-card">
+      <div class="ch bad-h">✕ Bad</div>
+<pre>public class PaymentService
+{
+    public async Task&lt;string&gt; ProcessAsync(
+        string method, decimal amount, string token)
+    {
+        switch (method)
+        {
+            case "stripe":
+                var stripe = new StripeClient("sk_...");
+                var charge = await stripe.Charges
+                    .CreateAsync(new ChargeCreateOptions
+                    {
+                        Amount   = (long)(amount * 100),
+                        Currency = "usd",
+                        Source   = token
+                    });
+                return charge.Id;
+
+            case "paypal":
+                var pp = new PayPalClient("id","sec");
+                var order = await pp.Orders
+                    .CreateAsync(amount, token);
+                return order.Id;
+
+            case "omise":
+                var omise = new OmiseClient("sk_...");
+                var chg = await omise.ChargeAsync(
+                    amount, token);
+                return chg.Id;
+
+            // add new provider = EDIT THIS SWITCH
+            default:
+                throw new NotSupportedException(method);
+        }
+    }
+}</pre>
+    </div>
+    <div class="code-card">
+      <div class="ch good-h">✓ Refactored — Handler collection</div>
+<pre>public interface IPaymentHandler
+{
+    string Method { get; }
+    Task&lt;string&gt; ProcessAsync(
+        decimal amount, string token);
+}
+
+public class StripeHandler : IPaymentHandler
+{
+    public string Method => "stripe";
+    public async Task&lt;string&gt; ProcessAsync(
+        decimal amount, string token)
+    {
+        var client = new StripeClient("sk_...");
+        var charge = await client.Charges
+            .CreateAsync(new ChargeCreateOptions
+            {
+                Amount   = (long)(amount * 100),
+                Currency = "usd",
+                Source   = token
+            });
+        return charge.Id;
+    }
+}
+
+public class PayPalHandler : IPaymentHandler
+{
+    public string Method => "paypal";
+    public async Task&lt;string&gt; ProcessAsync(
+        decimal amount, string token)
+    { /* PayPal logic */ return "pp_id"; }
+}
+
+public class OmiseHandler : IPaymentHandler
+{
+    public string Method => "omise";
+    public async Task&lt;string&gt; ProcessAsync(
+        decimal amount, string token)
+    { /* Omise logic */ return "omise_id"; }
+}
+// add new = add new class + 1 DI line
+
+public class PaymentService
+{
+    private readonly Dictionary&lt;string,
+        IPaymentHandler&gt; _handlers;
+
+    public PaymentService(
+        IEnumerable&lt;IPaymentHandler&gt; handlers)
+        => _handlers = handlers
+            .ToDictionary(h => h.Method);
+
+    public async Task&lt;string&gt; ProcessAsync(
+        string method,
+        decimal amount,
+        string token)
+    {
+        if (!_handlers.TryGetValue(
+                method, out var handler))
+            throw new NotSupportedException(
+                $"Payment method '{method}' " +
+                "not registered");
+
+        return await handler.ProcessAsync(
+            amount, token);
+    }
+}</pre>
+    </div>
+  </div>
+  <div class="tip"><strong>Pattern: Chain of Responsibility / Handler collection.</strong> Each payment provider is fully isolated. Adding GBPay tomorrow = one new class, one DI line. The service never changes.</div>
+  <div class="ask-row">
+    <button class="ask-btn" onclick="sendPrompt('Show IPaymentHandler unit test with mock Stripe handler using Moq in C#')">Test handlers ↗</button>
+    <button class="ask-btn" onclick="sendPrompt('How to add retry and fallback per payment handler in C# using Polly?')">Retry per handler ↗</button>
+  </div>
+</div>
+
+<!-- 3. ORDER STATUS -->
+<div class="panel" id="p2">
+  <p class="desc"><strong>Order status transitions</strong> — if/else chain decides what action to take per status. Adding a new status means editing multiple methods.</p>
+  <div class="tags">
+    <span class="tag tag-bad">if/else on status enum in every method</span>
+    <span class="tag tag-bad">status logic scattered</span>
+    <span class="tag tag-p">Fix: State pattern — each status owns its transitions</span>
+  </div>
+  <div class="grid2">
+    <div class="code-card">
+      <div class="ch bad-h">✕ Bad</div>
+<pre>public class OrderService
+{
+    public void Process(Order order)
+    {
+        if (order.Status == "Pending")
+        {
+            ValidateOrder(order);
+            order.Status = "Confirmed";
+        }
+        else if (order.Status == "Confirmed")
+        {
+            ChargePayment(order);
+            order.Status = "Paid";
+        }
+        else if (order.Status == "Paid")
+        {
+            ShipOrder(order);
+            order.Status = "Shipped";
+        }
+        else if (order.Status == "Shipped")
+        {
+            throw new InvalidOperationException(
+                "Order already shipped");
+        }
+        // add new status = EDIT THIS + other methods
+    }
+
+    public string GetLabel(Order order)
+    {
+        if (order.Status == "Pending")
+            return "Awaiting confirmation";
+        else if (order.Status == "Confirmed")
+            return "Payment pending";
+        else if (order.Status == "Paid")
+            return "Preparing to ship";
+        else if (order.Status == "Shipped")
+            return "On the way!";
+        return "Unknown";
+    }
+}</pre>
+    </div>
+    <div class="code-card">
+      <div class="ch good-h">✓ Refactored — State pattern</div>
+<pre>// each state owns its own behavior
+public interface IOrderState
+{
+    string StatusName { get; }
+    string Label      { get; }
+    Order  Process(Order order);
+}
+
+public class PendingState : IOrderState
+{
+    public string StatusName => "Pending";
+    public string Label      => "Awaiting confirmation";
+    public Order Process(Order order)
+    {
+        ValidateOrder(order);
+        order.Status = "Confirmed";
+        return order;
+    }
+    private void ValidateOrder(Order o) { /* ... */ }
+}
+
+public class ConfirmedState : IOrderState
+{
+    public string StatusName => "Confirmed";
+    public string Label      => "Payment pending";
+    public Order Process(Order order)
+    {
+        ChargePayment(order);
+        order.Status = "Paid";
+        return order;
+    }
+    private void ChargePayment(Order o) { /* ... */ }
+}
+
+public class PaidState : IOrderState
+{
+    public string StatusName => "Paid";
+    public string Label      => "Preparing to ship";
+    public Order Process(Order order)
+    {
+        ShipOrder(order);
+        order.Status = "Shipped";
+        return order;
+    }
+    private void ShipOrder(Order o) { /* ... */ }
+}
+
+public class ShippedState : IOrderState
+{
+    public string StatusName => "Shipped";
+    public string Label      => "On the way!";
+    public Order Process(Order order)
+        => throw new InvalidOperationException(
+            "Order already shipped");
+}
+
+// orchestrator — no if/else, no switch
+public class OrderService
+{
+    private readonly Dictionary&lt;string, IOrderState&gt;
+        _states;
+
+    public OrderService(
+        IEnumerable&lt;IOrderState&gt; states)
+        => _states = states
+            .ToDictionary(s => s.StatusName);
+
+    private IOrderState GetState(Order order)
+        => _states.TryGetValue(
+               order.Status, out var state)
+            ? state
+            : throw new NotSupportedException(
+                order.Status);
+
+    public Order Process(Order order)
+        => GetState(order).Process(order);
+
+    public string GetLabel(Order order)
+        => GetState(order).Label;
+}
+// add new status = add 1 class + 1 DI line</pre>
+    </div>
+  </div>
+  <div class="tip"><strong>Pattern: State.</strong> Each status owns its transitions and labels. The service has no conditionals at all. Adding "Refunded" status = one new class, zero changes to existing code.</div>
+  <div class="ask-row">
+    <button class="ask-btn" onclick="sendPrompt('Show State pattern for order status with entity Framework Core persisting status in C#')">With EF Core ↗</button>
+    <button class="ask-btn" onclick="sendPrompt('Show unit tests for OrderService state transitions using Moq in C#')">Test transitions ↗</button>
+  </div>
+</div>
+
+<!-- 4. NOTIFICATION CHANNEL -->
+<div class="panel" id="p3">
+  <p class="desc"><strong>Notification routing</strong> — switch routes to different notification providers. Sending to multiple channels at once is impossible without more if/else.</p>
+  <div class="tags">
+    <span class="tag tag-bad">switch on channel name</span>
+    <span class="tag tag-bad">can't send to multiple channels</span>
+    <span class="tag tag-p">Fix: INotifier collection + composite</span>
+  </div>
+  <div class="grid2">
+    <div class="code-card">
+      <div class="ch bad-h">✕ Bad</div>
+<pre>public class AlertService
+{
+    public async Task NotifyAsync(
+        string channel,
+        string userId,
+        string message)
+    {
+        switch (channel)
+        {
+            case "email":
+                var smtp = new SmtpClient("...");
+                smtp.Send("no-reply@co", userId,
+                    "Alert", message);
+                break;
+            case "sms":
+                TwilioClient.Init("sid", "token");
+                await MessageResource.CreateAsync(
+                    body: message,
+                    from: new PhoneNumber("+1555..."),
+                    to:   new PhoneNumber(userId));
+                break;
+            case "push":
+                var fcm = new FirebaseClient("key");
+                await fcm.SendAsync(userId, message);
+                break;
+            case "slack":
+                var http = new HttpClient();
+                await http.PostAsync(
+                    "https://hooks.slack.com/...",
+                    new StringContent(message));
+                break;
+            // add new = EDIT THIS SWITCH
+        }
+    }
+}</pre>
+    </div>
+    <div class="code-card">
+      <div class="ch good-h">✓ Refactored — Composite notifier</div>
+<pre>public interface INotifier
+{
+    string Channel { get; }
+    Task NotifyAsync(string userId, string message);
+}
+
+public class EmailNotifier : INotifier
+{
+    private readonly IMailer _mailer;
+    public string Channel => "email";
+    public EmailNotifier(IMailer mailer)
+        => _mailer = mailer;
+    public Task NotifyAsync(
+        string userId, string message)
+        => _mailer.SendAsync(
+            new MailMessage("no-reply@co",
+                userId, "Alert", message));
+}
+
+public class SmsNotifier : INotifier
+{
+    private readonly ISmsService _sms;
+    public string Channel => "sms";
+    public SmsNotifier(ISmsService sms)
+        => _sms = sms;
+    public Task NotifyAsync(
+        string userId, string message)
+        => _sms.SendAsync(userId, message);
+}
+
+public class SlackNotifier : INotifier
+{
+    public string Channel => "slack";
+    public Task NotifyAsync(
+        string userId, string message)
+    { /* Slack webhook */ return Task.CompletedTask; }
+}
+
+// Composite — send to ONE or MANY channels
+public class AlertService
+{
+    private readonly Dictionary&lt;string, INotifier&gt;
+        _notifiers;
+
+    public AlertService(
+        IEnumerable&lt;INotifier&gt; notifiers)
+        => _notifiers = notifiers
+            .ToDictionary(n => n.Channel);
+
+    // single channel
+    public async Task NotifyAsync(
+        string channel, string userId, string msg)
+    {
+        if (!_notifiers.TryGetValue(
+                channel, out var notifier))
+            throw new NotSupportedException(channel);
+        await notifier.NotifyAsync(userId, msg);
+    }
+
+    // multiple channels at once — impossible before
+    public async Task NotifyAllAsync(
+        IEnumerable&lt;string&gt; channels,
+        string userId, string msg)
+    {
+        var tasks = channels
+            .Where(_notifiers.ContainsKey)
+            .Select(c => _notifiers[c]
+                .NotifyAsync(userId, msg));
+        await Task.WhenAll(tasks);
+    }
+}
+// add Push: class PushNotifier : INotifier { }
+// + 1 DI line — zero other changes</pre>
+    </div>
+  </div>
+  <div class="tip"><strong>Pattern: Composite + Strategy.</strong> Bonus: <code>NotifyAllAsync</code> sends to multiple channels in parallel — something the switch version can never do cleanly.</div>
+  <div class="ask-row">
+    <button class="ask-btn" onclick="sendPrompt('Show how to notify all channels in parallel with error handling per channel in C#')">Parallel with error handling ↗</button>
+    <button class="ask-btn" onclick="sendPrompt('Show AlertService unit test sending to multiple channels with Moq C#')">Test multi-channel ↗</button>
+  </div>
+</div>
+
+<!-- 5. REPORT FORMAT -->
+<div class="panel" id="p4">
+  <p class="desc"><strong>Report format generation</strong> — switch builds PDF/CSV/Excel inline. Each format has totally different logic crammed into one method.</p>
+  <div class="tags">
+    <span class="tag tag-bad">switch on format string</span>
+    <span class="tag tag-bad">all format logic in one method</span>
+    <span class="tag tag-p">Fix: IReportFormatter + factory lookup</span>
+  </div>
+  <div class="grid2">
+    <div class="code-card">
+      <div class="ch bad-h">✕ Bad</div>
+<pre>public class ReportService
+{
+    public byte[] Generate(
+        string format,
+        IEnumerable&lt;object&gt; data)
+    {
+        switch (format.ToLower())
+        {
+            case "pdf":
+                var pdf = new PdfDocument();
+                var page = pdf.AddPage();
+                var gfx  = XGraphics.FromPdfPage(page);
+                gfx.DrawString("Report",
+                    new XFont("Arial", 20),
+                    XBrushes.Black,
+                    new XRect(0,0,page.Width,50),
+                    XStringFormats.Center);
+                foreach (var row in data)
+                    gfx.DrawString(row.ToString()!,
+                        new XFont("Arial",12),
+                        XBrushes.Black,
+                        new XPoint(20, 80));
+                using var ms = new MemoryStream();
+                pdf.Save(ms, false);
+                return ms.ToArray();
+
+            case "csv":
+                var csv = string.Join("\n",
+                    data.Select(r => r.ToString()));
+                return Encoding.UTF8.GetBytes(csv);
+
+            case "excel":
+                using var wb = new XLWorkbook();
+                var ws = wb.Worksheets.Add("Report");
+                var row2 = 1;
+                foreach (var item in data)
+                    ws.Cell(row2++, 1).Value =
+                        item.ToString();
+                using var ms2 = new MemoryStream();
+                wb.SaveAs(ms2);
+                return ms2.ToArray();
+
+            // add XML, JSON = EDIT THIS SWITCH
+            default:
+                throw new NotSupportedException(
+                    format);
+        }
+    }
+}</pre>
+    </div>
+    <div class="code-card">
+      <div class="ch good-h">✓ Refactored — Formatter per format</div>
+<pre>public interface IReportFormatter
+{
+    string Format      { get; }
+    string ContentType { get; }
+    byte[] Generate(IEnumerable&lt;object&gt; data);
+}
+
+public class PdfReportFormatter : IReportFormatter
+{
+    public string Format      => "pdf";
+    public string ContentType => "application/pdf";
+    public byte[] Generate(IEnumerable&lt;object&gt; data)
+    {
+        var pdf  = new PdfDocument();
+        var page = pdf.AddPage();
+        var gfx  = XGraphics.FromPdfPage(page);
+        gfx.DrawString("Report",
+            new XFont("Arial", 20),
+            XBrushes.Black,
+            new XRect(0,0,page.Width,50),
+            XStringFormats.Center);
+        // ... full PDF logic contained here
+        using var ms = new MemoryStream();
+        pdf.Save(ms, false);
+        return ms.ToArray();
+    }
+}
+
+public class CsvReportFormatter : IReportFormatter
+{
+    public string Format      => "csv";
+    public string ContentType => "text/csv";
+    public byte[] Generate(IEnumerable&lt;object&gt; data)
+    {
+        var csv = string.Join("\n",
+            data.Select(r => r.ToString()));
+        return Encoding.UTF8.GetBytes(csv);
+    }
+}
+
+public class ExcelReportFormatter : IReportFormatter
+{
+    public string Format      => "excel";
+    public string ContentType =>
+        "application/vnd.openxmlformats" +
+        "-officedocument.spreadsheetml.sheet";
+    public byte[] Generate(IEnumerable&lt;object&gt; data)
+    {
+        using var wb = new XLWorkbook();
+        var ws  = wb.Worksheets.Add("Report");
+        var row = 1;
+        foreach (var item in data)
+            ws.Cell(row++, 1).Value =
+                item.ToString();
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        return ms.ToArray();
+    }
+}
+// add JSON: class JsonReportFormatter — 1 class only
+
+public class ReportService
+{
+    private readonly Dictionary&lt;string,
+        IReportFormatter&gt; _formatters;
+
+    public ReportService(
+        IEnumerable&lt;IReportFormatter&gt; formatters)
+        => _formatters = formatters
+            .ToDictionary(f =>
+                f.Format.ToLower());
+
+    public (byte[] Data, string ContentType)
+        Generate(string format,
+                 IEnumerable&lt;object&gt; data)
+    {
+        if (!_formatters.TryGetValue(
+                format.ToLower(), out var fmt))
+            throw new NotSupportedException(
+                $"Format '{format}' not supported");
+        return (fmt.Generate(data), fmt.ContentType);
+    }
+}</pre>
+    </div>
+  </div>
+  <div class="tip"><strong>Pattern: Strategy + Factory.</strong> Each format is fully self-contained. The formatter also owns its <code>ContentType</code> — the controller can set the response header without another switch.</div>
+  <div class="ask-row">
+    <button class="ask-btn" onclick="sendPrompt('Show ReportService used in an ASP.NET Core controller returning file download by format in C#')">In API controller ↗</button>
+    <button class="ask-btn" onclick="sendPrompt('Show how to add JSON report formatter to the collection in C#')">Add JSON formatter ↗</button>
+  </div>
+</div>
+
+<!-- 6. USER ROLE -->
+<div class="panel" id="p5">
+  <p class="desc"><strong>User role permissions</strong> — if/else chain checks role before every action. Adding a new role or permission means editing multiple methods across the codebase.</p>
+  <div class="tags">
+    <span class="tag tag-bad">if role == "Admin" scattered everywhere</span>
+    <span class="tag tag-bad">permission logic duplicated</span>
+    <span class="tag tag-p">Fix: IPermissionPolicy per role + CanDo() abstraction</span>
+  </div>
+  <div class="grid2">
+    <div class="code-card">
+      <div class="ch bad-h">✕ Bad</div>
+<pre>public class DocumentService
+{
+    public void Delete(User user, Document doc)
+    {
+        if (user.Role == "Admin")
+        {
+            _repo.Delete(doc);
+        }
+        else if (user.Role == "Manager")
+        {
+            if (doc.OwnerId == user.Id)
+                _repo.Delete(doc);
+            else
+                throw new UnauthorizedException();
+        }
+        else if (user.Role == "Staff")
+        {
+            throw new UnauthorizedException();
+        }
+        // add "SuperAdmin" = EDIT THIS + other methods
+    }
+
+    public void Edit(User user, Document doc)
+    {
+        // same role checks duplicated again...
+        if (user.Role == "Admin") { /* edit */ }
+        else if (user.Role == "Manager")
+        {
+            if (doc.OwnerId == user.Id) { /* edit */ }
+            else throw new UnauthorizedException();
+        }
+        else throw new UnauthorizedException();
+    }
+}</pre>
+    </div>
+    <div class="code-card">
+      <div class="ch good-h">✓ Refactored — Permission policy</div>
+<pre>public interface IPermissionPolicy
+{
+    string Role { get; }
+    bool CanDelete(User user, Document doc);
+    bool CanEdit  (User user, Document doc);
+    bool CanView  (User user, Document doc);
+}
+
+public class AdminPolicy : IPermissionPolicy
+{
+    public string Role => "Admin";
+    // Admin can do everything
+    public bool CanDelete(User u, Document d) => true;
+    public bool CanEdit  (User u, Document d) => true;
+    public bool CanView  (User u, Document d) => true;
+}
+
+public class ManagerPolicy : IPermissionPolicy
+{
+    public string Role => "Manager";
+    // Manager owns their documents
+    public bool CanDelete(User u, Document d)
+        => d.OwnerId == u.Id;
+    public bool CanEdit(User u, Document d)
+        => d.OwnerId == u.Id;
+    public bool CanView(User u, Document d) => true;
+}
+
+public class StaffPolicy : IPermissionPolicy
+{
+    public string Role => "Staff";
+    public bool CanDelete(User u, Document d) => false;
+    public bool CanEdit  (User u, Document d) => false;
+    public bool CanView  (User u, Document d) => true;
+}
+// add SuperAdmin: class SuperAdminPolicy — 1 class
+
+public class DocumentService
+{
+    private readonly IDocumentRepository _repo;
+    private readonly Dictionary&lt;string,
+        IPermissionPolicy&gt; _policies;
+
+    public DocumentService(
+        IDocumentRepository repo,
+        IEnumerable&lt;IPermissionPolicy&gt; policies)
+    {
+        _repo     = repo;
+        _policies = policies
+            .ToDictionary(p => p.Role);
+    }
+
+    private IPermissionPolicy GetPolicy(User user)
+        => _policies.TryGetValue(
+               user.Role, out var p)
+            ? p
+            : throw new NotSupportedException(
+                user.Role);
+
+    public void Delete(User user, Document doc)
+    {
+        if (!GetPolicy(user).CanDelete(user, doc))
+            throw new UnauthorizedException();
+        _repo.Delete(doc);
+    }
+
+    public void Edit(User user, Document doc)
+    {
+        if (!GetPolicy(user).CanEdit(user, doc))
+            throw new UnauthorizedException();
+        _repo.Update(doc);
+    }
+}</pre>
+    </div>
+  </div>
+  <div class="tip"><strong>Pattern: Policy / Strategy.</strong> All permission logic for a role lives in one class. No role checks scattered across the codebase. Adding "Auditor" role = one new policy class.</div>
+  <div class="ask-row">
+    <button class="ask-btn" onclick="sendPrompt('Show how IPermissionPolicy integrates with ASP.NET Core Authorization policies and IAuthorizationHandler in C#')">With ASP.NET Core Auth ↗</button>
+    <button class="ask-btn" onclick="sendPrompt('Show unit tests for DocumentService permission checks using Moq in C#')">Test permissions ↗</button>
+  </div>
+</div>
+
+<!-- 7. SHIPPING METHOD -->
+<div class="panel" id="p6">
+  <p class="desc"><strong>Shipping cost calculation</strong> — nested if/else on shipping type AND destination zone. Adding a new zone or method explodes the complexity.</p>
+  <div class="tags">
+    <span class="tag tag-bad">nested if on type + zone</span>
+    <span class="tag tag-bad">complexity grows exponentially</span>
+    <span class="tag tag-p">Fix: IShippingCalculator per method + zone strategy</span>
+  </div>
+  <div class="grid2">
+    <div class="code-card">
+      <div class="ch bad-h">✕ Bad</div>
+<pre>public class ShippingService
+{
+    public decimal Calculate(
+        string method,
+        string zone,
+        decimal weight)
+    {
+        if (method == "standard")
+        {
+            if (zone == "domestic")
+                return weight * 1.5m + 5m;
+            else if (zone == "regional")
+                return weight * 2.5m + 15m;
+            else if (zone == "international")
+                return weight * 5.0m + 40m;
+        }
+        else if (method == "express")
+        {
+            if (zone == "domestic")
+                return weight * 3.0m + 10m;
+            else if (zone == "regional")
+                return weight * 5.0m + 25m;
+            else if (zone == "international")
+                return weight * 10m + 80m;
+        }
+        else if (method == "overnight")
+        {
+            if (zone == "domestic")
+                return weight * 6.0m + 20m;
+            // add new zone = edit nested ifs again
+        }
+        // add new method = more nesting
+        return 0m;
+    }
+}</pre>
+    </div>
+    <div class="code-card">
+      <div class="ch good-h">✓ Refactored — rate table + strategy</div>
+<pre>// rate config — data, not code
+public record ShippingRate(
+    string Method,
+    string Zone,
+    decimal RatePerKg,
+    decimal BaseFee);
+
+public interface IShippingCalculator
+{
+    string Method { get; }
+    decimal Calculate(string zone, decimal weight);
+}
+
+public class StandardShipping : IShippingCalculator
+{
+    public string Method => "standard";
+
+    // rates as data — add zone = add one row
+    private static readonly ShippingRate[] _rates =
+    {
+        new("standard","domestic",    1.5m,  5m),
+        new("standard","regional",    2.5m, 15m),
+        new("standard","international",5.0m,40m),
+    };
+
+    public decimal Calculate(
+        string zone, decimal weight)
+    {
+        var rate = _rates.FirstOrDefault(
+            r => r.Zone == zone)
+            ?? throw new NotSupportedException(zone);
+        return weight * rate.RatePerKg + rate.BaseFee;
+    }
+}
+
+public class ExpressShipping : IShippingCalculator
+{
+    public string Method => "express";
+
+    private static readonly ShippingRate[] _rates =
+    {
+        new("express","domestic",    3.0m, 10m),
+        new("express","regional",    5.0m, 25m),
+        new("express","international",10m, 80m),
+    };
+
+    public decimal Calculate(
+        string zone, decimal weight)
+    {
+        var rate = _rates.FirstOrDefault(
+            r => r.Zone == zone)
+            ?? throw new NotSupportedException(zone);
+        return weight * rate.RatePerKg + rate.BaseFee;
+    }
+}
+// add Overnight: class OvernightShipping — 1 class
+
+public class ShippingService
+{
+    private readonly Dictionary&lt;string,
+        IShippingCalculator&gt; _calculators;
+
+    public ShippingService(
+        IEnumerable&lt;IShippingCalculator&gt; calcs)
+        => _calculators = calcs
+            .ToDictionary(c => c.Method);
+
+    public decimal Calculate(
+        string method, string zone, decimal weight)
+    {
+        if (!_calculators.TryGetValue(
+                method, out var calc))
+            throw new NotSupportedException(method);
+        return calc.Calculate(zone, weight);
+    }
+}</pre>
+    </div>
+  </div>
+  <div class="tip"><strong>Pattern: Strategy + Data-driven rates.</strong> Rates are data rows, not code branches. Adding a zone = add one <code>ShippingRate</code> row. Adding a method = add one class. Nested if complexity is gone.</div>
+  <div class="ask-row">
+    <button class="ask-btn" onclick="sendPrompt('Show shipping rates loaded from database instead of hardcoded arrays in C#')">Rates from DB ↗</button>
+    <button class="ask-btn" onclick="sendPrompt('Show ShippingService unit tests covering all method and zone combinations in C#')">Test all combinations ↗</button>
+  </div>
+</div>
+
+<!-- 8. NESTED IF CHAIN -->
+<div class="panel" id="p7">
+  <p class="desc"><strong>Nested if / arrow code</strong> — deeply nested validation and branching logic that is hard to read, test, and extend. The classic "pyramid of doom".</p>
+  <div class="tags">
+    <span class="tag tag-bad">5+ levels of nesting</span>
+    <span class="tag tag-bad">multiple return paths buried deep</span>
+    <span class="tag tag-p">Fix: Guard clauses + Extract Method + early return</span>
+  </div>
+  <div class="grid2">
+    <div class="code-card">
+      <div class="ch bad-h">✕ Bad — pyramid of doom</div>
+<pre>public class LoanService
+{
+    public string ApproveLoan(
+        User user, LoanRequest request)
+    {
+        if (user != null)
+        {
+            if (user.IsActive)
+            {
+                if (user.Age >= 18)
+                {
+                    if (request != null)
+                    {
+                        if (request.Amount > 0)
+                        {
+                            if (request.Amount
+                                <= 1000000)
+                            {
+                                if (user.CreditScore
+                                    >= 650)
+                                {
+                                    if (user.Income
+                                        >= request.Amount
+                                        * 0.3m)
+                                    {
+                                        return "Approved";
+                                    }
+                                    else
+                                        return "Low income";
+                                }
+                                else
+                                    return "Low credit";
+                            }
+                            else
+                                return "Over limit";
+                        }
+                        else
+                            return "Invalid amount";
+                    }
+                    else
+                        return "No request";
+                }
+                else
+                    return "Underage";
+            }
+            else
+                return "Inactive user";
+        }
+        else
+            return "User not found";
+    }
+}</pre>
+    </div>
+    <div class="code-card">
+      <div class="ch good-h">✓ Refactored — Guard clauses</div>
+<pre>public class LoanService
+{
+    private const int    MinAge          = 18;
+    private const int    MinCreditScore  = 650;
+    private const decimal MinIncomeRatio = 0.3m;
+    private const decimal MaxLoanAmount  = 1_000_000m;
+
+    public string ApproveLoan(
+        User user, LoanRequest request)
+    {
+        // guard clauses — fail fast, flat structure
+        if (user    == null) return "User not found";
+        if (!user.IsActive)  return "Inactive user";
+        if (user.Age < MinAge) return "Underage";
+
+        if (request == null) return "No request";
+        if (request.Amount <= 0)
+            return "Invalid amount";
+        if (request.Amount > MaxLoanAmount)
+            return "Over limit";
+
+        // business rules — now readable
+        if (!HasSufficientCreditScore(user))
+            return "Low credit";
+        if (!HasSufficientIncome(user, request))
+            return "Low income";
+
+        return "Approved";
+    }
+
+    private bool HasSufficientCreditScore(User user)
+        => user.CreditScore >= MinCreditScore;
+
+    private bool HasSufficientIncome(
+        User user, LoanRequest request)
+        => user.Income >= request.Amount
+            * MinIncomeRatio;
+}
+
+// BEFORE: 8 levels of nesting, unreadable
+// AFTER:  flat, named constants, extracted methods
+// Each guard clause = one reason to reject
+// Business rules readable at a glance
+// Each method testable in isolation:
+// HasSufficientCreditScore / HasSufficientIncome</pre>
+    </div>
+  </div>
+  <div class="tip"><strong>Pattern: Guard Clauses + Extract Method.</strong> Rule: handle the invalid cases first and return early. The happy path flows naturally at the bottom without nesting. Every extracted method is independently testable.</div>
+  <div class="ask-row">
+    <button class="ask-btn" onclick="sendPrompt('Show how to refactor guard clauses into a validation pipeline using FluentValidation in C#')">FluentValidation pipeline ↗</button>
+    <button class="ask-btn" onclick="sendPrompt('Show LoanService unit tests for each guard clause rejection case in C# with NUnit')">Test each guard ↗</button>
+  </div>
+</div>
+
+<script>
+function show(i){
+  document.querySelectorAll('.panel').forEach((p,j)=>p.classList.toggle('active',j===i));
+  document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('active',j===i));
+}
+</script>

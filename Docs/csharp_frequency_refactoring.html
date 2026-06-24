@@ -1,0 +1,962 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.tabs{display:flex;gap:5px;flex-wrap:wrap;padding:12px 0 0;}
+.tab{padding:5px 12px;border-radius:20px;font-size:11.5px;font-weight:500;cursor:pointer;border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-secondary);transition:all .15s;}
+.tab.active{background:var(--color-text-primary);color:var(--color-background-primary);border-color:transparent;}
+.panel{display:none;padding:12px 0;}
+.panel.active{display:block;}
+.desc{font-size:12.5px;color:var(--color-text-secondary);line-height:1.6;margin-bottom:10px;}
+.desc strong{color:var(--color-text-primary);font-weight:500;}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;}
+.code-card{border-radius:8px;overflow:hidden;border:0.5px solid var(--color-border-tertiary);}
+.ch{padding:6px 12px;font-size:11px;font-weight:500;display:flex;align-items:center;gap:6px;}
+.bad-h{background:#FCEBEB;color:#791F1F;border-bottom:0.5px solid #F7C1C1;}
+.good-h{background:#EAF3DE;color:#27500A;border-bottom:0.5px solid #C0DD97;}
+@media(prefers-color-scheme:dark){.bad-h{background:#501313;color:#F7C1C1;border-bottom-color:#791F1F;}.good-h{background:#173404;color:#C0DD97;border-bottom-color:#27500A;}}
+pre{padding:10px 12px;font-family:var(--font-mono);font-size:10.5px;line-height:1.65;color:var(--color-text-primary);background:var(--color-background-secondary);white-space:pre;overflow-x:auto;}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px;}
+.tag{display:inline-block;font-size:11px;padding:2px 9px;border-radius:20px;}
+.tag-bad{background:#FCEBEB;color:#791F1F;}
+.tag-good{background:#EAF3DE;color:#27500A;}
+.tag-p{background:#EEEDFE;color:#26215C;}
+@media(prefers-color-scheme:dark){.tag-bad{background:#501313;color:#F7C1C1;}.tag-good{background:#173404;color:#C0DD97;}.tag-p{background:#26215C;color:#CECBF6;}}
+.tip{margin-top:10px;padding:9px 12px;background:var(--color-background-secondary);border-left:3px solid #534AB7;font-size:11.5px;color:var(--color-text-secondary);line-height:1.6;}
+.tip strong{color:var(--color-text-primary);}
+.ask-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;}
+.ask-btn{padding:5px 12px;border-radius:8px;font-size:11.5px;cursor:pointer;border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-secondary);transition:background .12s;}
+.ask-btn:hover{background:var(--color-background-secondary);}
+</style>
+
+<div class="tabs">
+  <button class="tab active" onclick="show(0)">1 DB</button>
+  <button class="tab" onclick="show(1)">2 Mail</button>
+  <button class="tab" onclick="show(2)">3 File</button>
+  <button class="tab" onclick="show(3)">4 HTTP</button>
+  <button class="tab" onclick="show(4)">5 Cache</button>
+  <button class="tab" onclick="show(5)">6 SMS</button>
+  <button class="tab" onclick="show(6)">7 Queue</button>
+  <button class="tab" onclick="show(7)">8 Logger</button>
+</div>
+
+<!-- 1. DB -->
+<div class="panel active" id="p0">
+  <p class="desc"><strong>Database connection</strong> — hardcoded connection string, <code>new SqlConnection</code> inside business logic, no abstraction, SQL injection via string interpolation.</p>
+  <div class="tags">
+    <span class="tag tag-bad">SQL injection</span>
+    <span class="tag tag-bad">new SqlConnection in service</span>
+    <span class="tag tag-bad">hardcoded conn string</span>
+    <span class="tag tag-p">Fix: IUserRepository + DI + parameterized query</span>
+  </div>
+  <div class="grid2">
+    <div class="code-card">
+      <div class="ch bad-h">✕ Bad</div>
+<pre>public class UserService
+{
+    public User GetUser(int id)
+    {
+        // hardcoded conn string — never do this
+        var conn = new SqlConnection(
+            "Server=localhost;User=sa;Password=1234");
+        conn.Open();
+
+        // SQL injection risk — string interpolation
+        var result = conn.QueryFirstOrDefault&lt;User&gt;(
+            $"SELECT * FROM Users WHERE Id = {id}");
+
+        conn.Close();
+        return result;
+    }
+
+    public void SaveUser(User user)
+    {
+        var conn = new SqlConnection(
+            "Server=localhost;User=sa;Password=1234");
+        conn.Open();
+        // duplicated connection logic everywhere
+        conn.Execute(
+            $"INSERT INTO Users (Name, Email) " +
+            $"VALUES ('{user.Name}','{user.Email}')");
+        conn.Close();
+    }
+}</pre>
+    </div>
+    <div class="code-card">
+      <div class="ch good-h">✓ Refactored</div>
+<pre>// 1. define abstraction
+public interface IUserRepository
+{
+    Task&lt;User?&gt; GetByIdAsync(int id);
+    Task SaveAsync(User user);
+}
+
+// 2. concrete implementation — infra layer only
+public class SqlUserRepository : IUserRepository
+{
+    private readonly string _connString;
+
+    public SqlUserRepository(
+        IConfiguration config)
+        // connection string from appsettings.json
+        => _connString = config
+            .GetConnectionString("DefaultConnection")!;
+
+    public async Task&lt;User?&gt; GetByIdAsync(int id)
+    {
+        await using var conn =
+            new SqlConnection(_connString);
+        // parameterized — no SQL injection
+        return await conn.QueryFirstOrDefaultAsync&lt;User&gt;(
+            "SELECT * FROM Users WHERE Id = @Id",
+            new { Id = id });
+    }
+
+    public async Task SaveAsync(User user)
+    {
+        await using var conn =
+            new SqlConnection(_connString);
+        await conn.ExecuteAsync(
+            "INSERT INTO Users (Name, Email) " +
+            "VALUES (@Name, @Email)",
+            new { user.Name, user.Email });
+    }
+}
+
+// 3. business logic — no DB code
+public class UserService
+{
+    private readonly IUserRepository _repo;
+    public UserService(IUserRepository repo)
+        => _repo = repo;
+
+    public Task&lt;User?&gt; GetUserAsync(int id)
+        => _repo.GetByIdAsync(id);
+
+    public Task SaveUserAsync(User user)
+        => _repo.SaveAsync(user);
+}
+
+// Program.cs
+// builder.Services
+//   .AddScoped&lt;IUserRepository,
+//              SqlUserRepository&gt;();
+//   .AddScoped&lt;UserService&gt;();</pre>
+    </div>
+  </div>
+  <div class="tip"><strong>Pattern:</strong> Repository. <strong>Rule:</strong> business logic never knows what database engine is used. Connection strings live in <code>appsettings.json</code> only. Parameterized queries always.</div>
+  <div class="ask-row">
+    <button class="ask-btn" onclick="sendPrompt('Show IUserRepository unit test with an in-memory mock in C# using Moq')">Test with Moq ↗</button>
+    <button class="ask-btn" onclick="sendPrompt('Show the same pattern using Entity Framework Core DbContext instead of Dapper')">With EF Core ↗</button>
+  </div>
+</div>
+
+<!-- 2. MAIL -->
+<div class="panel" id="p1">
+  <p class="desc"><strong>Email sending</strong> — <code>SmtpClient</code> created inside business logic, hardcoded SMTP credentials, no abstraction, untestable.</p>
+  <div class="tags">
+    <span class="tag tag-bad">SmtpClient in service</span>
+    <span class="tag tag-bad">hardcoded credentials</span>
+    <span class="tag tag-bad">not async</span>
+    <span class="tag tag-p">Fix: IMailer + MailSettings config + DI</span>
+  </div>
+  <div class="grid2">
+    <div class="code-card">
+      <div class="ch bad-h">✕ Bad</div>
+<pre>public class OrderService
+{
+    public void PlaceOrder(Order order)
+    {
+        _repo.Save(order);
+
+        // SMTP hardcoded — cannot test, cannot swap
+        var smtp = new SmtpClient("smtp.gmail.com")
+        {
+            Port = 587,
+            Credentials = new NetworkCredential(
+                "admin@co.com", "P@ssw0rd123"),
+            EnableSsl = true
+        };
+
+        var mail = new MailMessage(
+            "admin@co.com",
+            order.CustomerEmail,
+            "Order Confirmed",
+            $"Hi {order.CustomerName}, " +
+            $"your order #{order.Id} is confirmed.");
+
+        smtp.Send(mail); // sync — blocks thread
+    }
+}</pre>
+    </div>
+    <div class="code-card">
+      <div class="ch good-h">✓ Refactored</div>
+<pre>// 1. abstraction
+public interface IMailer
+{
+    Task SendAsync(MailMessage message);
+}
+
+// 2. settings model — from appsettings.json
+public class MailSettings
+{
+    public string Host     { get; set; } = "";
+    public int    Port     { get; set; }
+    public string UserName { get; set; } = "";
+    public string Password { get; set; } = "";
+    public string From     { get; set; } = "";
+}
+
+// 3. concrete implementation
+public class SmtpMailer : IMailer
+{
+    private readonly MailSettings _settings;
+
+    public SmtpMailer(
+        IOptions&lt;MailSettings&gt; options)
+        => _settings = options.Value;
+
+    public async Task SendAsync(MailMessage message)
+    {
+        using var smtp = new SmtpClient(_settings.Host)
+        {
+            Port = _settings.Port,
+            Credentials = new NetworkCredential(
+                _settings.UserName,
+                _settings.Password),
+            EnableSsl = true
+        };
+        await smtp.SendMailAsync(message);
+    }
+}
+
+// 4. business logic — knows nothing of SMTP
+public class OrderService
+{
+    private readonly IOrderRepository _repo;
+    private readonly IMailer _mailer;
+
+    public OrderService(
+        IOrderRepository repo, IMailer mailer)
+    { _repo = repo; _mailer = mailer; }
+
+    public async Task PlaceOrderAsync(Order order)
+    {
+        await _repo.SaveAsync(order);
+        var mail = new MailMessage(
+            "admin@co.com",
+            order.CustomerEmail,
+            "Order Confirmed",
+            $"Hi {order.CustomerName}, " +
+            $"order #{order.Id} confirmed.");
+        await _mailer.SendAsync(mail);
+    }
+}
+
+// appsettings.json:
+// "MailSettings": {
+//   "Host":"smtp.gmail.com","Port":587,
+//   "UserName":"admin@co.com","Password":"..."
+// }
+// Program.cs:
+// builder.Services
+//   .Configure&lt;MailSettings&gt;(
+//      config.GetSection("MailSettings"))
+//   .AddScoped&lt;IMailer, SmtpMailer&gt;();</pre>
+    </div>
+  </div>
+  <div class="tip"><strong>Pattern:</strong> Adapter + Options pattern. <strong>Rule:</strong> never hardcode SMTP credentials. Use <code>IOptions&lt;T&gt;</code> to bind config. Always <code>SendMailAsync</code> — never block the thread.</div>
+  <div class="ask-row">
+    <button class="ask-btn" onclick="sendPrompt('Show how to use FluentEmail instead of SmtpClient in C# with the same IMailer pattern')">With FluentEmail ↗</button>
+    <button class="ask-btn" onclick="sendPrompt('Show how to mock IMailer in a unit test for OrderService using Moq in C#')">Mock IMailer ↗</button>
+  </div>
+</div>
+
+<!-- 3. FILE -->
+<div class="panel" id="p2">
+  <p class="desc"><strong>File I/O</strong> — <code>File.WriteAllText</code> and <code>File.ReadAllText</code> called directly inside business logic, hardcoded paths, impossible to test.</p>
+  <div class="tags">
+    <span class="tag tag-bad">File.* inside service</span>
+    <span class="tag tag-bad">hardcoded path</span>
+    <span class="tag tag-bad">sync I/O</span>
+    <span class="tag tag-p">Fix: IFileStorage abstraction + async</span>
+  </div>
+  <div class="grid2">
+    <div class="code-card">
+      <div class="ch bad-h">✕ Bad</div>
+<pre>public class ReportService
+{
+    public void SaveReport(
+        string reportName, string content)
+    {
+        // hardcoded path — breaks on other machines
+        var path = $"C:\\Reports\\{reportName}.txt";
+
+        // sync — blocks thread
+        File.WriteAllText(path, content);
+
+        Console.WriteLine($"Saved to {path}");
+    }
+
+    public string LoadReport(string reportName)
+    {
+        var path = $"C:\\Reports\\{reportName}.txt";
+
+        // no exists check — throws FileNotFoundException
+        return File.ReadAllText(path);
+    }
+}</pre>
+    </div>
+    <div class="code-card">
+      <div class="ch good-h">✓ Refactored</div>
+<pre>// 1. abstraction
+public interface IFileStorage
+{
+    Task WriteAsync(string fileName, string content);
+    Task&lt;string?&gt; ReadAsync(string fileName);
+    bool Exists(string fileName);
+}
+
+// 2. local disk implementation
+public class LocalFileStorage : IFileStorage
+{
+    private readonly string _basePath;
+
+    public LocalFileStorage(
+        IConfiguration config)
+        => _basePath = config["Storage:BasePath"]
+            ?? Path.GetTempPath();
+
+    public async Task WriteAsync(
+        string fileName, string content)
+    {
+        var full = Path.Combine(_basePath, fileName);
+        Directory.CreateDirectory(
+            Path.GetDirectoryName(full)!);
+        await File.WriteAllTextAsync(full, content);
+    }
+
+    public async Task&lt;string?&gt; ReadAsync(
+        string fileName)
+    {
+        var full = Path.Combine(_basePath, fileName);
+        if (!File.Exists(full)) return null;
+        return await File.ReadAllTextAsync(full);
+    }
+
+    public bool Exists(string fileName)
+        => File.Exists(
+            Path.Combine(_basePath, fileName));
+}
+
+// 3. business logic — no File.* calls
+public class ReportService
+{
+    private readonly IFileStorage _storage;
+
+    public ReportService(IFileStorage storage)
+        => _storage = storage;
+
+    public async Task SaveReportAsync(
+        string name, string content)
+        => await _storage.WriteAsync(
+            $"{name}.txt", content);
+
+    public async Task&lt;string?&gt; LoadReportAsync(
+        string name)
+        => await _storage.ReadAsync($"{name}.txt");
+}
+
+// Swap to Azure Blob later — zero service changes:
+// public class AzureBlobStorage : IFileStorage { }
+// builder.Services
+//   .AddScoped&lt;IFileStorage, LocalFileStorage&gt;();</pre>
+    </div>
+  </div>
+  <div class="tip"><strong>Pattern:</strong> Adapter. <strong>Rule:</strong> paths come from config. Always async I/O. Abstract <code>IFileStorage</code> so you can swap local disk → Azure Blob → S3 without touching business logic.</div>
+  <div class="ask-row">
+    <button class="ask-btn" onclick="sendPrompt('Show IFileStorage implemented with Azure Blob Storage in C#')">Azure Blob impl ↗</button>
+    <button class="ask-btn" onclick="sendPrompt('Show an in-memory IFileStorage mock for unit testing in C#')">In-memory mock ↗</button>
+  </div>
+</div>
+
+<!-- 4. HTTP -->
+<div class="panel" id="p3">
+  <p class="desc"><strong>HTTP client</strong> — <code>new HttpClient()</code> inside a method (socket exhaustion risk), hardcoded base URL, no retry, no abstraction.</p>
+  <div class="tags">
+    <span class="tag tag-bad">new HttpClient() in method</span>
+    <span class="tag tag-bad">hardcoded URL</span>
+    <span class="tag tag-bad">no retry / timeout</span>
+    <span class="tag tag-p">Fix: IHttpClientFactory + typed client + Polly</span>
+  </div>
+  <div class="grid2">
+    <div class="code-card">
+      <div class="ch bad-h">✕ Bad</div>
+<pre>public class PaymentService
+{
+    public async Task&lt;bool&gt; ChargeAsync(
+        decimal amount, string token)
+    {
+        // new HttpClient per call — socket exhaustion!
+        var http = new HttpClient();
+
+        // hardcoded URL — breaks on env change
+        var response = await http.PostAsync(
+            "https://api.stripe.com/v1/charges",
+            new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair&lt;string,string&gt;(
+                    "amount", amount.ToString()),
+                new KeyValuePair&lt;string,string&gt;(
+                    "source", token),
+            }));
+
+        return response.IsSuccessStatusCode;
+        // no retry, no timeout, no error handling
+    }
+}</pre>
+    </div>
+    <div class="code-card">
+      <div class="ch good-h">✓ Refactored</div>
+<pre>// 1. abstraction
+public interface IPaymentGateway
+{
+    Task&lt;bool&gt; ChargeAsync(
+        decimal amount, string token);
+}
+
+// 2. typed HTTP client
+public class StripeClient
+{
+    private readonly HttpClient _http;
+    public StripeClient(HttpClient http)
+        => _http = http;
+
+    public async Task&lt;bool&gt; ChargeAsync(
+        decimal amount, string token)
+    {
+        var response = await _http.PostAsync(
+            "v1/charges",
+            new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair&lt;string,string&gt;(
+                    "amount", amount.ToString()),
+                new KeyValuePair&lt;string,string&gt;(
+                    "source", token),
+            }));
+        return response.IsSuccessStatusCode;
+    }
+}
+
+// 3. adapter wraps typed client
+public class StripePaymentGateway : IPaymentGateway
+{
+    private readonly StripeClient _client;
+    public StripePaymentGateway(StripeClient client)
+        => _client = client;
+
+    public Task&lt;bool&gt; ChargeAsync(
+        decimal amount, string token)
+        => _client.ChargeAsync(amount, token);
+}
+
+// 4. business logic — no HttpClient anywhere
+public class OrderService
+{
+    private readonly IPaymentGateway _payment;
+    public OrderService(IPaymentGateway payment)
+        => _payment = payment;
+
+    public async Task PlaceOrderAsync(Order order)
+    {
+        var ok = await _payment.ChargeAsync(
+            order.Total, order.CardToken);
+        if (!ok) throw new PaymentException();
+    }
+}
+
+// Program.cs — typed client + Polly retry
+// builder.Services
+//   .AddHttpClient&lt;StripeClient&gt;(c => {
+//     c.BaseAddress = new Uri(
+//       config["Stripe:BaseUrl"]!);
+//     c.Timeout = TimeSpan.FromSeconds(30);
+//   })
+//   .AddTransientHttpErrorPolicy(p =>
+//     p.WaitAndRetryAsync(3,
+//       _ => TimeSpan.FromSeconds(2)));
+//   builder.Services
+//     .AddScoped&lt;IPaymentGateway,
+//                StripePaymentGateway&gt;();</pre>
+    </div>
+  </div>
+  <div class="tip"><strong>Pattern:</strong> Typed Client + Adapter. <strong>Rule:</strong> never <code>new HttpClient()</code> — always <code>IHttpClientFactory</code> or typed clients via DI. Base URL from config. Polly for retry/circuit breaker.</div>
+  <div class="ask-row">
+    <button class="ask-btn" onclick="sendPrompt('Show Polly retry and circuit breaker setup with IHttpClientFactory in ASP.NET Core 8')">Polly setup ↗</button>
+    <button class="ask-btn" onclick="sendPrompt('Show how to mock IPaymentGateway in a unit test using Moq in C#')">Mock IPaymentGateway ↗</button>
+  </div>
+</div>
+
+<!-- 5. CACHE -->
+<div class="panel" id="p4">
+  <p class="desc"><strong>Caching</strong> — cache logic mixed into business logic, magic string keys, no abstraction, cache and business rules tangled together.</p>
+  <div class="tags">
+    <span class="tag tag-bad">cache logic in service</span>
+    <span class="tag tag-bad">magic cache key strings</span>
+    <span class="tag tag-bad">no abstraction</span>
+    <span class="tag tag-p">Fix: ICacheService + cache-aside pattern</span>
+  </div>
+  <div class="grid2">
+    <div class="code-card">
+      <div class="ch bad-h">✕ Bad</div>
+<pre>public class ProductService
+{
+    private readonly IMemoryCache _cache;
+    private readonly IProductRepository _repo;
+
+    public async Task&lt;Product?&gt; GetProductAsync(
+        int id)
+    {
+        // magic string key — typo = silent cache miss
+        var key = "product_" + id;
+
+        // cache logic tangled in business logic
+        if (_cache.TryGetValue(key, out Product? p))
+            return p;
+
+        p = await _repo.GetByIdAsync(id);
+
+        // magic number — what is 300?
+        _cache.Set(key, p,
+            TimeSpan.FromSeconds(300));
+
+        return p;
+    }
+}</pre>
+    </div>
+    <div class="code-card">
+      <div class="ch good-h">✓ Refactored</div>
+<pre>// 1. abstraction
+public interface ICacheService
+{
+    Task&lt;T?&gt; GetAsync&lt;T&gt;(string key);
+    Task SetAsync&lt;T&gt;(string key, T value,
+        TimeSpan? expiry = null);
+    Task RemoveAsync(string key);
+}
+
+// 2. cache key constants — no magic strings
+public static class CacheKeys
+{
+    public static string Product(int id)
+        => $"products:{id}";
+    public static string ProductList()
+        => "products:all";
+}
+
+// 3. concrete — wraps IMemoryCache
+public class MemoryCacheService : ICacheService
+{
+    private static readonly TimeSpan DefaultExpiry
+        = TimeSpan.FromMinutes(5);
+    private readonly IMemoryCache _cache;
+
+    public MemoryCacheService(IMemoryCache cache)
+        => _cache = cache;
+
+    public Task&lt;T?&gt; GetAsync&lt;T&gt;(string key)
+    {
+        _cache.TryGetValue(key, out T? value);
+        return Task.FromResult(value);
+    }
+
+    public Task SetAsync&lt;T&gt;(
+        string key, T value, TimeSpan? expiry)
+    {
+        _cache.Set(key, value,
+            expiry ?? DefaultExpiry);
+        return Task.CompletedTask;
+    }
+
+    public Task RemoveAsync(string key)
+    {
+        _cache.Remove(key);
+        return Task.CompletedTask;
+    }
+}
+
+// 4. business logic — clean cache-aside
+public class ProductService
+{
+    private readonly IProductRepository _repo;
+    private readonly ICacheService _cache;
+
+    public ProductService(
+        IProductRepository repo,
+        ICacheService cache)
+    { _repo = repo; _cache = cache; }
+
+    public async Task&lt;Product?&gt; GetProductAsync(
+        int id)
+    {
+        var key = CacheKeys.Product(id);
+        var cached = await _cache.GetAsync&lt;Product&gt;(key);
+        if (cached is not null) return cached;
+
+        var product = await _repo.GetByIdAsync(id);
+        if (product is not null)
+            await _cache.SetAsync(key, product);
+        return product;
+    }
+}
+// Swap to Redis: class RedisCacheService : ICacheService
+// builder.Services
+//   .AddMemoryCache()
+//   .AddScoped&lt;ICacheService, MemoryCacheService&gt;();</pre>
+    </div>
+  </div>
+  <div class="tip"><strong>Pattern:</strong> Cache-Aside + Adapter. <strong>Rule:</strong> cache keys as typed methods — never raw strings. Expiry from constants. Swap Memory → Redis by swapping one registration.</div>
+  <div class="ask-row">
+    <button class="ask-btn" onclick="sendPrompt('Show ICacheService implemented with Redis StackExchange in C#')">Redis impl ↗</button>
+    <button class="ask-btn" onclick="sendPrompt('Show cache invalidation pattern when product is updated in C#')">Cache invalidation ↗</button>
+  </div>
+</div>
+
+<!-- 6. SMS -->
+<div class="panel" id="p5">
+  <p class="desc"><strong>SMS sending</strong> — Twilio SDK called directly inside business logic, hardcoded credentials, untestable, no fallback.</p>
+  <div class="tags">
+    <span class="tag tag-bad">TwilioClient in service</span>
+    <span class="tag tag-bad">hardcoded AccountSid/Token</span>
+    <span class="tag tag-bad">no abstraction</span>
+    <span class="tag tag-p">Fix: ISmsService + TwilioSmsService + DI</span>
+  </div>
+  <div class="grid2">
+    <div class="code-card">
+      <div class="ch bad-h">✕ Bad</div>
+<pre>public class AuthService
+{
+    public void SendOtp(string phone, string otp)
+    {
+        // Twilio SDK hardcoded — cannot test or swap
+        TwilioClient.Init(
+            "ACxxxxxxxxxxxxxxx",   // hardcoded SID
+            "your_auth_token");    // hardcoded token
+
+        MessageResource.Create(
+            body: $"Your OTP is {otp}",
+            from: new PhoneNumber("+15551234567"),
+            to:   new PhoneNumber(phone));
+
+        // sync call — no error handling
+    }
+}</pre>
+    </div>
+    <div class="code-card">
+      <div class="ch good-h">✓ Refactored</div>
+<pre>// 1. abstraction
+public interface ISmsService
+{
+    Task SendAsync(string toPhone, string message);
+}
+
+// 2. settings
+public class TwilioSettings
+{
+    public string AccountSid { get; set; } = "";
+    public string AuthToken  { get; set; } = "";
+    public string FromPhone  { get; set; } = "";
+}
+
+// 3. Twilio adapter
+public class TwilioSmsService : ISmsService
+{
+    private readonly TwilioSettings _settings;
+
+    public TwilioSmsService(
+        IOptions&lt;TwilioSettings&gt; options)
+    {
+        _settings = options.Value;
+        TwilioClient.Init(
+            _settings.AccountSid,
+            _settings.AuthToken);
+    }
+
+    public async Task SendAsync(
+        string toPhone, string message)
+    {
+        await MessageResource.CreateAsync(
+            body: message,
+            from: new PhoneNumber(_settings.FromPhone),
+            to:   new PhoneNumber(toPhone));
+    }
+}
+
+// 4. business logic — no Twilio anywhere
+public class AuthService
+{
+    private readonly ISmsService _sms;
+    public AuthService(ISmsService sms)
+        => _sms = sms;
+
+    public async Task SendOtpAsync(
+        string phone, string otp)
+        => await _sms.SendAsync(
+            phone, $"Your OTP is: {otp}");
+}
+
+// appsettings.json:
+// "Twilio":{ "AccountSid":"AC...",
+//   "AuthToken":"...","FromPhone":"+1555..." }
+// Program.cs:
+// builder.Services
+//   .Configure&lt;TwilioSettings&gt;(
+//      config.GetSection("Twilio"))
+//   .AddScoped&lt;ISmsService, TwilioSmsService&gt;();</pre>
+    </div>
+  </div>
+  <div class="tip"><strong>Pattern:</strong> Adapter + Options. <strong>Rule:</strong> credentials in <code>appsettings.json</code> (or secrets). <code>ISmsService</code> lets you swap Twilio → AWS SNS → mock with zero service changes.</div>
+  <div class="ask-row">
+    <button class="ask-btn" onclick="sendPrompt('Show ISmsService implemented with AWS SNS in C#')">AWS SNS impl ↗</button>
+    <button class="ask-btn" onclick="sendPrompt('Show how to mock ISmsService and test OTP sending in C# with Moq')">Mock + test OTP ↗</button>
+  </div>
+</div>
+
+<!-- 7. QUEUE -->
+<div class="panel" id="p6">
+  <p class="desc"><strong>Message queue</strong> — RabbitMQ / Azure Service Bus created inline, business logic coupled to queue infrastructure, no abstraction.</p>
+  <div class="tags">
+    <span class="tag tag-bad">queue client in business logic</span>
+    <span class="tag tag-bad">hardcoded queue name</span>
+    <span class="tag tag-bad">no abstraction</span>
+    <span class="tag tag-p">Fix: IMessagePublisher + adapter per provider</span>
+  </div>
+  <div class="grid2">
+    <div class="code-card">
+      <div class="ch bad-h">✕ Bad</div>
+<pre>public class OrderService
+{
+    public async Task PlaceOrderAsync(Order order)
+    {
+        await _repo.SaveAsync(order);
+
+        // RabbitMQ hardcoded in business logic
+        var factory = new ConnectionFactory
+        {
+            HostName = "localhost",
+            UserName = "guest",
+            Password = "guest"
+        };
+        using var conn = factory.CreateConnection();
+        using var channel = conn.CreateModel();
+
+        // magic string queue name
+        channel.QueueDeclare("order-placed",
+            durable: true, exclusive: false,
+            autoDelete: false);
+
+        var body = Encoding.UTF8.GetBytes(
+            JsonSerializer.Serialize(order));
+
+        channel.BasicPublish("", "order-placed",
+            null, body);
+        // no error handling, no retry
+    }
+}</pre>
+    </div>
+    <div class="code-card">
+      <div class="ch good-h">✓ Refactored</div>
+<pre>// 1. abstraction
+public interface IMessagePublisher
+{
+    Task PublishAsync&lt;T&gt;(
+        string topic, T message)
+        where T : class;
+}
+
+// 2. queue name constants — no magic strings
+public static class Topics
+{
+    public const string OrderPlaced   = "order-placed";
+    public const string PaymentFailed = "payment-failed";
+    public const string UserCreated   = "user-created";
+}
+
+// 3. RabbitMQ adapter
+public class RabbitMqPublisher : IMessagePublisher
+{
+    private readonly IModel _channel;
+
+    public RabbitMqPublisher(IModel channel)
+        => _channel = channel;
+
+    public Task PublishAsync&lt;T&gt;(
+        string topic, T message)
+        where T : class
+    {
+        _channel.QueueDeclare(topic,
+            durable: true, exclusive: false,
+            autoDelete: false);
+
+        var body = Encoding.UTF8.GetBytes(
+            JsonSerializer.Serialize(message));
+
+        _channel.BasicPublish("", topic,
+            basicProperties: null, body: body);
+
+        return Task.CompletedTask;
+    }
+}
+
+// 4. business logic — no queue SDK anywhere
+public class OrderService
+{
+    private readonly IOrderRepository _repo;
+    private readonly IMessagePublisher _publisher;
+
+    public OrderService(
+        IOrderRepository repo,
+        IMessagePublisher publisher)
+    { _repo = repo; _publisher = publisher; }
+
+    public async Task PlaceOrderAsync(Order order)
+    {
+        await _repo.SaveAsync(order);
+        await _publisher.PublishAsync(
+            Topics.OrderPlaced, order);
+    }
+}
+
+// Swap to Azure Service Bus later:
+// public class ServiceBusPublisher
+//     : IMessagePublisher { }
+// Program.cs:
+// builder.Services
+//   .AddSingleton&lt;IMessagePublisher,
+//                 RabbitMqPublisher&gt;();</pre>
+    </div>
+  </div>
+  <div class="tip"><strong>Pattern:</strong> Adapter. <strong>Rule:</strong> topic/queue names as constants — never inline strings. <code>IMessagePublisher</code> lets you swap RabbitMQ → Azure Service Bus → AWS SQS → in-memory for tests.</div>
+  <div class="ask-row">
+    <button class="ask-btn" onclick="sendPrompt('Show IMessagePublisher implemented with Azure Service Bus in C#')">Azure Service Bus ↗</button>
+    <button class="ask-btn" onclick="sendPrompt('Show an in-memory IMessagePublisher for integration tests in C#')">In-memory for tests ↗</button>
+  </div>
+</div>
+
+<!-- 8. LOGGER -->
+<div class="panel" id="p7">
+  <p class="desc"><strong>Logging</strong> — <code>Console.WriteLine</code> scattered everywhere, no log levels, static logger calls, no structured logging, impossible to route to Serilog/Application Insights.</p>
+  <div class="tags">
+    <span class="tag tag-bad">Console.WriteLine as logging</span>
+    <span class="tag tag-bad">no log levels</span>
+    <span class="tag tag-bad">string concatenation in logs</span>
+    <span class="tag tag-p">Fix: ILogger&lt;T&gt; injection + structured logging</span>
+  </div>
+  <div class="grid2">
+    <div class="code-card">
+      <div class="ch bad-h">✕ Bad</div>
+<pre>public class PaymentService
+{
+    public async Task ProcessAsync(Payment payment)
+    {
+        // Console — not routable, no levels, no sink
+        Console.WriteLine("Processing payment: "
+            + payment.Id);
+
+        try
+        {
+            await _gateway.ChargeAsync(
+                payment.Amount, payment.Token);
+
+            // string concat — no structured data
+            Console.WriteLine("Payment OK: "
+                + payment.Id + " amount: "
+                + payment.Amount);
+        }
+        catch (Exception ex)
+        {
+            // no severity, no stack trace routing
+            Console.WriteLine("ERROR: " + ex.Message);
+            throw;
+        }
+    }
+}</pre>
+    </div>
+    <div class="code-card">
+      <div class="ch good-h">✓ Refactored</div>
+<pre>public class PaymentService
+{
+    private readonly IPaymentGateway _gateway;
+    // inject ILogger&lt;T&gt; — built into ASP.NET Core
+    private readonly ILogger&lt;PaymentService&gt; _logger;
+
+    public PaymentService(
+        IPaymentGateway gateway,
+        ILogger&lt;PaymentService&gt; logger)
+    {
+        _gateway = gateway;
+        _logger  = logger;
+    }
+
+    public async Task ProcessAsync(Payment payment)
+    {
+        // structured logging — named placeholders
+        // Serilog/AppInsights can index {PaymentId}
+        _logger.LogInformation(
+            "Processing payment {PaymentId} " +
+            "amount {Amount:C}",
+            payment.Id, payment.Amount);
+
+        try
+        {
+            await _gateway.ChargeAsync(
+                payment.Amount, payment.Token);
+
+            _logger.LogInformation(
+                "Payment {PaymentId} succeeded",
+                payment.Id);
+        }
+        catch (PaymentException ex)
+        {
+            // LogError with exception — stack trace
+            // routed to all configured sinks
+            _logger.LogError(ex,
+                "Payment {PaymentId} failed " +
+                "with amount {Amount:C}",
+                payment.Id, payment.Amount);
+            throw;
+        }
+    }
+}
+
+// Program.cs — Serilog (optional but recommended)
+// builder.Host.UseSerilog((ctx, lc) => lc
+//   .ReadFrom.Configuration(ctx.Configuration)
+//   .Enrich.FromLogContext()
+//   .WriteTo.Console()
+//   .WriteTo.ApplicationInsights(...));
+
+// ILogger&lt;T&gt; is auto-registered by ASP.NET Core
+// — no manual registration needed
+
+// Log levels to use:
+// LogTrace    → very verbose, diagnostic
+// LogDebug    → dev-time debugging
+// LogInformation → normal business events
+// LogWarning  → unexpected but recoverable
+// LogError    → failures that need attention
+// LogCritical → system-level failure</pre>
+    </div>
+  </div>
+  <div class="tip"><strong>Rule:</strong> always inject <code>ILogger&lt;T&gt;</code> — never use <code>Console.WriteLine</code> or static loggers. Use <strong>named placeholders</strong> <code>{PaymentId}</code> not string concat — this enables structured log querying in Seq, Kibana, App Insights. Match log level to severity.</div>
+  <div class="ask-row">
+    <button class="ask-btn" onclick="sendPrompt('Show full Serilog setup in ASP.NET Core 8 with file and console sinks')">Serilog setup ↗</button>
+    <button class="ask-btn" onclick="sendPrompt('Show how to test that ILogger.LogError was called in a unit test using Moq in C#')">Test ILogger calls ↗</button>
+  </div>
+</div>
+
+<script>
+function show(i){
+  document.querySelectorAll('.panel').forEach((p,j)=>p.classList.toggle('active',j===i));
+  document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('active',j===i));
+}
+</script>
