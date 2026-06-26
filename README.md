@@ -21,20 +21,43 @@ A self-contained practice workspace to prepare for refactoring-focused coding in
 | `mock-exam-01.ts` | TypeScript | `ReportService` — multi-type report generator | 5 |
 | `mock-exam-02.cs` | C# .NET | `InvoiceManager` — invoice processing pipeline | 6 |
 | `mock-exam-02-answer.cs` | C# .NET | Full refactored answer for exam-02 | — |
+| `mock-exam-03.cs` | C# .NET | `OrderProcessor` — e-commerce order pipeline | 6 |
+| `mock-exam-03-answer.cs` | C# .NET | Full refactored answer for exam-03 | — |
+| `mock-exam-04.ts` | TypeScript | `AuthService` — JWT authentication pipeline | 6 |
+| `mock-exam-04-answer.ts` | TypeScript | Full refactored answer for exam-04 | — |
+| `mock-exam-05.cs` | C# .NET | `ProductCatalog` — product lookup with cache | 6 |
+| `mock-exam-05-answer.cs` | C# .NET | Full refactored answer for exam-05 | — |
+| `mock-exam-06.ts` | TypeScript | `CartService` — shopping cart checkout | 6 |
+| `mock-exam-06-answer.ts` | TypeScript | Full refactored answer for exam-06 | — |
+| `mock-exam-07.cs` | C# .NET | `NotificationDispatcher` — multi-channel notify | 6 |
+| `mock-exam-07-answer.cs` | C# .NET | Full refactored answer for exam-07 | — |
+| `mock-exam-08.ts` | TypeScript | `CsvImporter` — CSV file import pipeline | 6 |
+| `mock-exam-08-answer.ts` | TypeScript | Full refactored answer for exam-08 | — |
+| `mock-exam-09.cs` | C# .NET | `InventoryService` — stock deduction with alerts | 6 |
+| `mock-exam-09-answer.cs` | C# .NET | Full refactored answer for exam-09 | — |
+| `mock-exam-10.ts` | TypeScript | `ApiClient` — HTTP REST client wrapper | 6 |
+| `mock-exam-10-answer.ts` | TypeScript | Full refactored answer for exam-10 | — |
+| `mock-exam-11.cs` | C# .NET | `PayrollProcessor` — employee payroll | 6 |
+| `mock-exam-11-answer.cs` | C# .NET | Full refactored answer for exam-11 | — |
 
 ---
 
 ## Code Smells Covered
 
-| Smell | Exam 01 | Exam 02 |
-|---|---|---|
-| SQL injection (string interpolation) | ✓ | ✓ |
-| Duplicated code block (DRY violation) | ✓ | ✓ |
-| Tight coupling (`new` inside business logic) | ✓ | ✓ |
-| SRP violation (god method / god class) | ✓ | ✓ |
-| Magic literals (numbers / strings) | ✓ | ✓ |
-| Hardcoded credentials in source code | ✓ | ✓ |
-| Untestable design (missing interfaces) | — | ✓ |
+| Smell | Exam 01 | Exam 02 | Exam 03 | Exam 04 | Exam 05 | Exam 06 | Exam 07 | Exam 08 | Exam 09 | Exam 10 | Exam 11 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| SQL injection (string interpolation) | ✓ | ✓ | ✓ | — | — | — | — | — | — | — | — |
+| Duplicated code block (DRY violation) | ✓ | ✓ | ✓ | — | — | — | — | — | — | — | — |
+| Tight coupling (`new` inside business logic) | ✓ | ✓ | ✓ | — | — | — | — | — | — | — | — |
+| SRP violation (god method / god class) | ✓ | ✓ | ✓ | — | — | — | — | — | — | — | — |
+| Magic literals (numbers / strings) | ✓ | ✓ | — | — | — | — | — | — | — | — | — |
+| Hardcoded credentials in source code | ✓ | ✓ | ✓ | — | — | — | — | — | — | — | — |
+| Untestable design (missing interfaces) | — | ✓ | ✓ | — | — | — | — | — | — | — | — |
+| Swallowed exception (silent catch-all) | — | — | ✓ | — | — | — | — | — | — | — | — |
+| Replace Conditional with Polymorphism | — | — | — | — | — | — | ✓ | — | — | — | — |
+| Callback pyramid / missing async-await | — | — | — | ✓ | — | — | — | ✓ | — | — | — |
+| Global mutable state (module-level) | — | — | — | — | — | — | — | — | — | ✓ | — |
+| Race condition (non-atomic check-then-act) | — | — | — | — | — | — | — | — | ✓ | — | — |
 
 ---
 

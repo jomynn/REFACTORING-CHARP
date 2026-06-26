@@ -2528,6 +2528,119 @@ public class OrderService
 // builder.Services.AddScoped&lt;IPaymentGateway, StripePaymentGateway&gt;();</pre></div>
       </div>
       <div class="tip"><strong>Pattern:</strong> Typed Client + Adapter. <strong>Rule:</strong> never <code>new HttpClient()</code> — always <code>IHttpClientFactory</code> or typed clients via DI. Base URL from config. Polly for retry/circuit breaker.</div>
+
+      <p class="sec-title">Scenario 2 — Multiple HTTP Service Adapters</p>
+      <p class="desc"><strong>Multiple HTTP services in one workflow</strong> — <code>new HttpClient()</code> per call, JSON built with string interpolation (injection risk), hardcoded base URLs, and all HTTP details tangled inside business logic. Both payment and notification repeat the same problems.</p>
+      <div class="tags"><span class="tag tag-bad">new HttpClient() × 2 per call</span><span class="tag tag-bad">string-concat JSON (injection risk)</span><span class="tag tag-bad">hardcoded URLs in business logic</span><span class="tag tag-p">Fix: one typed adapter per service + JsonSerializer + interface per dependency</span></div>
+      <div class="grid2">
+        <div class="code-card"><div class="ch bad-h">✕ Bad</div><pre>public class OrderService
+{
+    public async Task PlaceOrderAsync(
+        string customerId, decimal amount, int orderId)
+    {
+        // new HttpClient per call — socket exhaustion
+        using var http = new HttpClient();
+        // string-concat JSON — fragile, no escaping
+        var chargeBody =
+            $"{{\"customerId\":\"{customerId}\"," +
+            $"\"amount\":{amount},\"reference\":{orderId}}}";
+        var chargeResp = await http.PostAsync(
+            "https://api.payments.io/v1/charge",
+            new StringContent(chargeBody,
+                Encoding.UTF8, "application/json"));
+        if (!chargeResp.IsSuccessStatusCode)
+            throw new Exception("Payment failed");
+
+        // second HttpClient — same smells repeated
+        using var http2 = new HttpClient();
+        var notifyBody =
+            $"{{\"to\":\"{customerId}\"," +
+            $"\"text\":\"Order {orderId} confirmed\"}}";
+        await http2.PostAsync(
+            "https://api.notify.io/v1/push",
+            new StringContent(notifyBody,
+                Encoding.UTF8, "application/json"));
+    }
+}</pre></div>
+        <div class="code-card"><div class="ch good-h">✓ Refactored — Typed Adapters</div><pre>// Domain interfaces — no HTTP knowledge
+public interface IPaymentGateway
+{
+    Task&lt;bool&gt; ChargeAsync(
+        string customerId, decimal amount, int orderId);
+}
+public interface INotificationService
+{
+    Task NotifyAsync(string customerId, string message);
+}
+
+// Infrastructure — HTTP details isolated here
+public class HttpPaymentGateway : IPaymentGateway
+{
+    private readonly HttpClient _http;
+    public HttpPaymentGateway(HttpClient http) =&gt; _http = http;
+
+    public async Task&lt;bool&gt; ChargeAsync(
+        string customerId, decimal amount, int orderId)
+    {
+        var body = JsonSerializer.Serialize(
+            new { customerId, amount, reference = orderId });
+        var response = await _http.PostAsync("v1/charge",
+            new StringContent(body, Encoding.UTF8,
+                "application/json"));
+        return response.IsSuccessStatusCode;
+    }
+}
+
+public class HttpNotificationService : INotificationService
+{
+    private readonly HttpClient _http;
+    public HttpNotificationService(HttpClient http) =&gt; _http = http;
+
+    public async Task NotifyAsync(string customerId, string message)
+    {
+        var body = JsonSerializer.Serialize(
+            new { to = customerId, text = message });
+        await _http.PostAsync("v1/push",
+            new StringContent(body, Encoding.UTF8,
+                "application/json"));
+    }
+}
+
+// Business logic — zero HTTP knowledge
+public class OrderService
+{
+    private readonly IPaymentGateway _payment;
+    private readonly INotificationService _notify;
+
+    public OrderService(
+        IPaymentGateway payment,
+        INotificationService notify)
+    { _payment = payment; _notify = notify; }
+
+    public async Task PlaceOrderAsync(
+        string customerId, decimal amount, int orderId)
+    {
+        var ok = await _payment.ChargeAsync(
+            customerId, amount, orderId);
+        if (!ok) throw new PaymentException();
+        await _notify.NotifyAsync(
+            customerId, $"Order {orderId} confirmed");
+    }
+}
+// Program.cs
+// builder.Services
+//   .AddHttpClient&lt;HttpPaymentGateway&gt;(c =&gt;
+//     c.BaseAddress = new Uri(config["Payment:BaseUrl"]!))
+//   .AddTransientHttpErrorPolicy(p =&gt;
+//     p.WaitAndRetryAsync(3, _ =&gt; TimeSpan.FromSeconds(2)));
+// builder.Services
+//   .AddHttpClient&lt;HttpNotificationService&gt;(c =&gt;
+//     c.BaseAddress = new Uri(config["Notify:BaseUrl"]!));
+// builder.Services
+//   .AddScoped&lt;IPaymentGateway, HttpPaymentGateway&gt;()
+//   .AddScoped&lt;INotificationService, HttpNotificationService&gt;();</pre></div>
+      </div>
+      <div class="tip"><strong>Pattern:</strong> One typed client per external service. <strong>Why <code>JsonSerializer</code> over string concat:</strong> proper escaping, no injection risk, structured output. <strong>Rule:</strong> interfaces live in the domain layer — <code>HttpPaymentGateway</code> and <code>HttpNotificationService</code> live in the infrastructure layer only.</div>
     </div>
 
     <div class="freq-panel" id="freq-p4">
